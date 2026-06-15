@@ -1,5 +1,5 @@
 
-local FORCE = 50
+local FORCE = 10
 
 local Conveyers = {}
 Conveyers.__index = Conveyers

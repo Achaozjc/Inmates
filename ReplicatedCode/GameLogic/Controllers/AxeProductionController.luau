@@ -30,7 +30,20 @@ local AnimationsEnum = require(GameLogic.Shared.Enums.AnimationsEnum)
 local ColorEnum = require(GameLogic.Shared.Enums.ColorEnum)
 local RemoteEventKey = require(GameLogic.SharedConstants.Keys.RemoteEventKey)
 
-local AXE_ACTION_ANIM_ID = "rbxassetid://" .. tostring(AnimationsEnum.Axe.Action)
+-- 默认砍木动画 ID：当某单位在 AxeConfig 未配置专属动画（animation 为 0/缺省）时回退使用
+local DEFAULT_AXE_ACTION_ANIM_ID = "rbxassetid://" .. tostring(AnimationsEnum.Axe.Action)
+
+-- 按斧子 category 解析其砍木动画资源 ID：配置了有效的专属动画则用专属，否则回退默认
+local function resolveAxeAnimId(axe: Model): string
+	local category = axe:GetAttribute(AttributeEnum.Category)
+	if type(category) == "string" then
+		local info = AxeConfig.Axes[category]
+		if info and type(info.animation) == "number" and info.animation > 0 then
+			return "rbxassetid://" .. tostring(info.animation)
+		end
+	end
+	return DEFAULT_AXE_ACTION_ANIM_ID
+end
 -- 砍木音效（随 axe_action 动画播放，挂在斧子部件上形成 3D 空间音效）
 local CHOP_SOUND_ID = "rbxassetid://9113801512"
 local CHOP_SOUND_VOLUME = 3
@@ -231,7 +244,7 @@ local function getAxeTrack(axe: Model): AnimationTrack?
 	end
 
 	local animation = Instance.new("Animation")
-	animation.AnimationId = AXE_ACTION_ANIM_ID
+	animation.AnimationId = resolveAxeAnimId(axe)
 	local track = animator:LoadAnimation(animation)
 	trackByAxe[axe] = track
 

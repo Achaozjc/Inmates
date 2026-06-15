@@ -15,7 +15,7 @@ WoodStackVisual.STACK_ROWS = 6
 WoodStackVisual.WOOD_STEP_X = 4.25 -- 沿原木长轴(~4)的列间距，留约 0.25 间隙
 WoodStackVisual.WOOD_STEP_Z = 1.74 -- 沿原木宽度(~1.54)的排间距，留约 0.2 间隙
 WoodStackVisual.LAYER_HEIGHT = 1.6 -- 层高(木材高~1.54)，留约 0.06 间隙
-WoodStackVisual.GROUND_BASE_HEIGHT_OFFSET = 4
+WoodStackVisual.GROUND_BASE_HEIGHT_OFFSET = 5
 
 function WoodStackVisual.resolvePrefab(category: string): Model?
 	local instances = ReplicatedStorage:FindFirstChild("Instances")
