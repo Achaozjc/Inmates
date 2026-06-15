@@ -1,0 +1,62 @@
+--!strict
+
+--[[
+	Links a group of tweens together, allowing them to be played, paused and canceled as one.
+
+	Note TweenGroup does not support PlaybackState or Completed events.
+--]]
+
+local TweenGroup = {}
+TweenGroup.__index = TweenGroup
+
+export type ClassType = typeof(setmetatable({} :: {
+	_tweens: { Tween },
+}, TweenGroup))
+
+function TweenGroup.new(...: Tween): ClassType
+	local self = {
+		_tweens = { ... },
+	}
+	setmetatable(self, TweenGroup)
+
+	return self
+end
+
+function TweenGroup.play(self: ClassType)
+	for _, tween in ipairs(self._tweens) do
+		tween:Play()
+	end
+end
+
+function TweenGroup.pause(self: ClassType)
+	for _, tween in ipairs(self._tweens) do
+		tween:Pause()
+	end
+end
+
+function TweenGroup.cancel(self: ClassType)
+	for _, tween in ipairs(self._tweens) do
+		tween:Cancel()
+	end
+end
+
+function TweenGroup.onCompleted(self: ClassType, callback: () -> ())
+	for _, tween in ipairs(self._tweens) do
+		tween.Completed:Connect(function()
+			-- 检查所有 tween 是否完成
+			local allCompleted = true
+			for _, tw in ipairs(self._tweens) do
+				if tw.PlaybackState ~= Enum.PlaybackState.Completed then
+					allCompleted = false
+					break
+				end
+			end
+
+			if allCompleted then
+				callback()
+			end
+		end)
+	end
+end
+
+return TweenGroup

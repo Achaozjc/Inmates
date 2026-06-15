@@ -1,0 +1,63 @@
+--!strict
+
+local RichTextCategory = {
+	robuxSymbol = "R$",
+	lv = "Lvl %s",
+	Level = "Level %s",
+	count = "x%s",
+	cash = "$ %s",
+	second = "(%ss)",
+	successPurchase = "Success purchased %s",
+	purchaseThankYou = "Thank you for your purchase!",
+	color = [[<font color="%s">%s</font>]],
+	gift = "You have received %s from %s!",
+	giftTo = "Successfully gifted product to %s",
+	giftSureNotice = "Are you sure you want to gift %s to %s?",
+	purchaseSureNotice = "Are you sure you want to purchase %s?",
+	giftTopic = "gift-%s",
+	friendLuck = "+%.0f%%",
+	number = "%s",
+	dialogueString = [[%s : "%s"]],
+	limited = "Limited: %s/%s",
+	luckBoost = "x%.1f Luck",
+	xp = "+%s XP",
+	afkTime = "Next Reward In:     %ss",
+	giftBy = "Gifted By: @%s",
+	byOwner = "@ %s",
+	barText = "%s/%s",
+	barText2 = "(%s/%s)",
+	cashText = "$ %s",
+	price = "Price: %s",
+	stock = "stock : %s",
+	refreshTime = "Refresh in: %s",
+	timeLeft = "Time left: %s",
+	expiresTime = "Expires in: %s",
+	endInTime = "End in: %s",
+	percent = "%s%%",
+	roundDecimals = "%.2f%%",
+	connnect = "%s %s",
+	_connnect = "%s_%s",
+	resourcePrefix = "rbxassetid://%s",
+	des = [["%s"]],
+
+	serverLuck = "%s has purchased a Server Luck boost, it is now at %sx Luck Boost!",
+	serverLuckTime = "%s has purchased a Server Luck boost + %s!",
+
+	messagePrefix = {
+		system = "[System]",
+		global = "[Global]",
+		event = "[Event]",
+	},
+
+	rarity = {
+		[1] = "Common",
+		[2] = "Uncommon",
+		[3] = "Rare",
+		[4] = "Epic",
+		[5] = "Legendary",
+		[6] = "Mythical",
+		[7] = "Secret",
+	},
+}
+
+return RichTextCategory
