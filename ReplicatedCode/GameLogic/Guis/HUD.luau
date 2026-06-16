@@ -209,7 +209,7 @@ local function refreshTotalAxeLabel()
 
 	local axeTycoon = PlayerDataClient.get(PlayerDataKey.AxeTycoon)
 	local axeCount = getTotalAxeCountFromAxeTycoon(axeTycoon)
-	label.Text = string.format("Total Axe : %s", ShowUnitNum(axeCount))
+	label.Text = string.format("Total Inmates : %s", ShowUnitNum(axeCount))
 end
 
 -- 已发现斧子数量（图鉴解锁进度）

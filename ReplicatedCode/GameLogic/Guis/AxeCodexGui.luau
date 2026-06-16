@@ -32,8 +32,8 @@ local AxeCategory = require(GameLogic.SharedConstants.Categories.AxeCategory)
 local ColorEnum = require(GameLogic.Shared.Enums.ColorEnum)
 local PlayerDataKey = require(GameLogic.SharedConstants.Keys.PlayerDataKey)
 
--- 图标模型在 Viewport 内的朝向（统一一个 3/4 视角，便于辨识）
-local ICON_MODEL_ANGLE = CFrame.fromEulerAnglesYXZ(math.rad(-12), math.rad(25), 0)
+-- 图标模型在 Viewport 内的朝向（正面朝向）
+local ICON_MODEL_ANGLE = CFrame.identity
 
 local AxeCodexGui = GuiBase.new(UILayerId.GUI_AxeCodex, UILayerType.Menu)
 
@@ -130,8 +130,8 @@ local function buildEntries(grid: ScrollingFrame, template: Frame)
 				model = prefab,
 				fitVisibleParts = true,
 				modelAngle = ICON_MODEL_ANGLE,
-				zoom = 2,
-				lookOffset = Vector3.new(0, 0.6, 0),
+				zoom = 1,
+				lookOffset = Vector3.new(0, 0, 0),
 				size = UDim2.fromScale(1, 1),
 			})
 			viewport:setParent(iconHolder)

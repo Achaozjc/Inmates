@@ -21,7 +21,7 @@ local AnimationsEnum = require(ReplicatedStorage.ReplicatedCode.GameLogic.Shared
 local arrangeModels = require(ReplicatedStorage.ReplicatedCode.GameLogic.Modules.OpenChestArrangeModels)
 
 local AXE_DISPLAY_SECONDS = 3
-local AXE_REVEAL_Y_OFFSET = 0 -- 斧头展示 Y 偏移（相对 chest 基础偏移 -1.5，与宝箱保持一致）
+local AXE_REVEAL_Y_OFFSET = 0.5 -- 斧头展示 Y 偏移（相对 chest 基础偏移 -1.5，与宝箱保持一致）
 local AXE_REVEAL_ROTATION_OFFSET = CFrame.Angles(0, 0, 0)
 
 local camera = Workspace.CurrentCamera
@@ -109,7 +109,7 @@ function OpenChestController:_renderPosition(models: { Model }, yOffset: number?
 	self._janitor:Add(
 		RunService.RenderStepped:Connect(function()
 			local cf = camera.CFrame
-			local center = cf.Position + cf.LookVector * 5 + Vector3.new(0, -1.5 + offsetY, 0)
+			local center = cf.Position + cf.LookVector * 5 + Vector3.new(0, -1 + offsetY, 0)
 			local lookFrom = cf.Position
 			arrangeModels(models, center, lookFrom, cf.RightVector, rotationOffset)
 		end),

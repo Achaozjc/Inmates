@@ -114,6 +114,20 @@ local function playVfx(prefab: BasePart, button: BasePart)
 	end)
 end
 
+local nameList = {
+	["CollectMoney"] = "Touch_Collection",
+	["Storage"] = "Touch_Collection",
+	["Upgrade"] = "Touch_Collection",
+	
+	["Group"] = "Touch_Group",
+	
+	["BuyAxe_1"] = "Touch_Merge&Buy",
+	["BuyAxe_5"] = "Touch_Merge&Buy",
+	["BuyAxe_25"] = "Touch_Merge&Buy",
+	["BuyAxe_100"] = "Touch_Merge&Buy",
+	["Merge"] = "Touch_Merge&Buy",
+}
+
 -- 服务端通知某按钮业务成功：定位自己基地同名按钮并播放对应特效
 local function onVfxRequested(buttonName: unknown)
 	if type(buttonName) ~= "string" then
@@ -133,7 +147,8 @@ local function onVfxRequested(buttonName: unknown)
 	end
 
 	local base = findMyBase()
-	local buttonsFolder = base and base:FindFirstChild("Touch_Collection")
+	local name = nameList[buttonName]
+	local buttonsFolder = base and base:FindFirstChild(name)
 	local button = buttonsFolder and buttonsFolder:FindFirstChild(buttonName)
 	if not button or not button:IsA("BasePart") then
 		return

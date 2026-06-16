@@ -21,8 +21,10 @@ local ReplicatedCode = ReplicatedStorage:WaitForChild("ReplicatedCode")
 local ServerCode = ServerScriptService:WaitForChild("ServerCode")
 
 local setInterval = require(ReplicatedCode.Framework.Utility.Time.SetInterval)
+local ShowUnitNum = require(ReplicatedCode.Framework.UI.ShowUnitNum)
 local Network = require(ReplicatedCode.Framework.Core.Network)
 local RemoteEventKey = require(ReplicatedCode.GameLogic.SharedConstants.Keys.RemoteEventKey)
+local NotifyCategory = require(ReplicatedCode.GameLogic.SharedConstants.Categories.NotifyCategory)
 local BaseConfig = require(ReplicatedCode.GameLogic.Shared.Configs.BaseConfig)
 local ProcessorUpgradeConfig = require(ReplicatedCode.GameLogic.Shared.Configs.ProcessorUpgradeConfig)
 local WoodConfig = require(ReplicatedCode.GameLogic.Shared.Configs.WoodConfig)
@@ -56,29 +58,40 @@ local function syncBaseAttributes(player: Player)
 	end
 end
 
--- 将背负木头卸入处理机（存入量已乘木料倍率）。成功返回 true。
-function ProcessorService.deposit(player: Player): boolean
+-- 单次存入的结果明细（供 UI 通知展示）
+export type DepositInfo = {
+	depositAmount: number,       -- 真实存入量（持有价值 × 倍率，含双倍木料通行证）
+	woodValue: number,           -- 存入前背负的木头价值
+	multiplier: number,          -- 本次存入的世界木料倍率
+	bonus: number,               -- 相比存入前新增的量（depositAmount - woodValue，倍率 < 1 时为负）
+	gamepassMultiplier: number,  -- 双倍木料通行证倍率（未拥有为 1）
+}
+
+-- 将背负木头卸入处理机（存入量已乘木料倍率）。成功返回存入明细，失败返回 nil。
+function ProcessorService.deposit(player: Player): DepositInfo?
 	local axeData = PlayerDataServer.getValue(player, PlayerDataKey.AxeTycoon)
 	if type(axeData) ~= "table" then
-		return false
+		return nil
 	end
 
 	local carrying = if type(axeData.carrying) == "table" then axeData.carrying else {}
 	local woodValue = WoodConfig.sumCarryingValue(carrying)
 	if woodValue <= 0 then
-		return false
+		return nil
 	end
 
 	local multiplier = WoodMultiplierService.getMultiplier()
 	local depositAmount = WoodMultiplierConfig.applyToDeposit(woodValue, multiplier)
 
 	-- 双倍木料通行证：入库价值 ×2（拥有状态由 GamepassService 写入玩家属性）
+	local gamepassMultiplier = 1
 	if player:GetAttribute(AttributeEnum.GamepassDoubleWood) then
-		depositAmount *= GamepassConfig.DOUBLE_WOOD_MULTIPLIER
+		gamepassMultiplier = GamepassConfig.DOUBLE_WOOD_MULTIPLIER
+		depositAmount *= gamepassMultiplier
 	end
 
 	if depositAmount <= 0 then
-		return false
+		return nil
 	end
 
 	PlayerDataServer.updateValue(player, PlayerDataKey.AxeTycoon, function(data)
@@ -89,7 +102,13 @@ function ProcessorService.deposit(player: Player): boolean
 	end)
 	syncBaseAttributes(player)
 	DebouncedPlayerSave.schedule(player)
-	return true
+	return {
+		depositAmount = depositAmount,
+		woodValue = woodValue,
+		multiplier = multiplier,
+		bonus = depositAmount - woodValue,
+		gamepassMultiplier = gamepassMultiplier,
+	}
 end
 
 -- 付费功能：将处理机当前全部库存（processorStock）一次性转入 PendingCash。
@@ -168,6 +187,21 @@ local function processAllPlayers()
 	end
 end
 
+-- 存入成功后向玩家推送 toast 通知：
+-- Deposited {真实存入} ({+/-相比存入前新增}) Items [×{世界倍率}]!
+-- 拥有双倍木料通行证时额外追加通行证倍率：... [×{世界倍率}] [x2]!
+local function notifyDeposit(player: Player, info: DepositInfo)
+	local depositStr = ShowUnitNum(info.depositAmount)
+	local bonusStr = if info.bonus >= 0 then "+" .. ShowUnitNum(info.bonus) else ShowUnitNum(info.bonus)
+	local multiplierStr = string.format("×%.2f", info.multiplier)
+	-- 通行证倍率仅在拥有（> 1）时展示，如 [x2]
+	local gamepassStr = if info.gamepassMultiplier > 1 then string.format(" [x%g]", info.gamepassMultiplier) else ""
+	local message = string.format("Deposited %s (%s) Items [%s]%s!", depositStr, bonusStr, multiplierStr, gamepassStr)
+	-- 倍率 ≥ 1（新增非负）走绿色 Success，倍率 < 1（折损）走黄色 Warn
+	local category = if info.bonus >= 0 then NotifyCategory.Success else NotifyCategory.Warn
+	Network.fireClient(RemoteEventKey.Unreliable_ServerNotify, player, message, category)
+end
+
 local function onStorageTouched(part: BasePart, otherPart: BasePart)
 	local character = otherPart.Parent
 	if not character then
@@ -194,9 +228,11 @@ local function onStorageTouched(part: BasePart, otherPart: BasePart)
 	end
 	lastTouchAt[part] = now
 
-	-- 仅业务成功才通知客户端在按钮处播放粒子特效
-	if ProcessorService.deposit(player) then
+	-- 仅业务成功才通知客户端在按钮处播放粒子特效，并弹出存入 toast
+	local info = ProcessorService.deposit(player)
+	if info then
 		Network.fireClient(RemoteEventKey.TouchButtonVFX, player, part.Name)
+		notifyDeposit(player, info)
 	end
 end
 

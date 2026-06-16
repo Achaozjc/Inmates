@@ -6,22 +6,20 @@
 	职责：
 	- 为每把斧子挂载 Billboard（预制体 Prefabs.Billboard.Axe），显示木种名与等级（英文）
 	- 收到 produceAnim：提前播放 axe_action 动画
-	- 收到 produce：克隆木材模型，从斧子滚向所属基地的 TouchedStacking 触发区（兼堆叠锚点）做堆叠效果
+	- 收到 produce：克隆木材模型，从斧子沿轨道滚向堆叠区，散落在 TouchedStacking 附近
 
-	服务端只维护数据，木材模型与堆叠完全在客户端生成，不回传、不影响权威数据。
+	服务端只维护数据，木材模型与散落表现完全在客户端生成，不回传、不影响权威数据。
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local GameLogic = ReplicatedStorage.ReplicatedCode.GameLogic
 local Framework = ReplicatedStorage.ReplicatedCode.Framework
 
 local Network = require(Framework.Core.Network)
-local CharacterBackpackController = require(GameLogic.Controllers.CharacterBackpackController)
 local WoodPickupPopup = require(GameLogic.Modules.WoodPickupPopup)
 local WoodStackVisual = require(GameLogic.Modules.WoodStackVisual)
 local AxeConfig = require(GameLogic.Shared.Configs.AxeConfig)
@@ -30,38 +28,69 @@ local AnimationsEnum = require(GameLogic.Shared.Enums.AnimationsEnum)
 local ColorEnum = require(GameLogic.Shared.Enums.ColorEnum)
 local RemoteEventKey = require(GameLogic.SharedConstants.Keys.RemoteEventKey)
 
--- 默认砍木动画 ID：当某单位在 AxeConfig 未配置专属动画（animation 为 0/缺省）时回退使用
+-- 默认动画 ID：当某单位在 AxeConfig 未配置专属动画时回退使用
 local DEFAULT_AXE_ACTION_ANIM_ID = "rbxassetid://" .. tostring(AnimationsEnum.Axe.Action)
 
--- 按斧子 category 解析其砍木动画资源 ID：配置了有效的专属动画则用专属，否则回退默认
-local function resolveAxeAnimId(axe: Model): string
-	local category = axe:GetAttribute(AttributeEnum.Category)
-	if type(category) == "string" then
-		local info = AxeConfig.Axes[category]
-		if info and type(info.animation) == "number" and info.animation > 0 then
-			return "rbxassetid://" .. tostring(info.animation)
+type AxeAnimInfo = {
+	actionId: string,
+	idleId: string?,
+}
+
+-- 按斧子 category 解析 action / idle 动画资源 ID
+local function resolveAxeAnimInfo(category: string): AxeAnimInfo
+	local info = AxeConfig.Axes[category]
+	local actionId = DEFAULT_AXE_ACTION_ANIM_ID
+	local idleId: string? = nil
+	if info then
+		if type(info.action) == "number" and info.action > 0 then
+			actionId = "rbxassetid://" .. tostring(info.action)
+		end
+		if type(info.idle) == "number" and info.idle > 0 then
+			idleId = "rbxassetid://" .. tostring(info.idle)
 		end
 	end
-	return DEFAULT_AXE_ACTION_ANIM_ID
+	return {
+		actionId = actionId,
+		idleId = idleId,
+	}
+end
+
+-- 动画应播在斧子子级与 category 同名的 Model 上（如 Prefabs.Axe.1.1）
+local function resolveAnimModel(axe: Model): Model?
+	local category = axe:GetAttribute(AttributeEnum.Category)
+	if type(category) == "string" then
+		local child = axe:FindFirstChild(category)
+		if child and child:IsA("Model") then
+			return child
+		end
+	end
+	return axe
 end
 -- 砍木音效（随 axe_action 动画播放，挂在斧子部件上形成 3D 空间音效）
 local CHOP_SOUND_ID = "rbxassetid://9113801512"
 local CHOP_SOUND_VOLUME = 3
 -- 动画里标记「斧子劈中木头瞬间」的关键帧事件名（在动画编辑器中添加），
--- 播放到该标记时触发砍木音效与粒子
+-- 播放到该标记时触发砍木音效、斧刃粒子与 ProduceVFX
 local CHOP_MARKER_NAME = "Event"
 -- 超出该距离听不到砍木声，避免远处其他基地的斧子声干扰
 local CHOP_SOUND_MAX_DISTANCE = 100
 -- 砍木粒子（服务端生成斧子时已克隆到 Axe.AxeRoot 上）单次发射数量，
 -- 发射器配置了 EmitCount 属性时以属性为准
 local CHOP_VFX_EMIT_COUNT = 15
--- 木材滚动到位后的触发区，同时兼作堆叠锚点（码放位与 WoodPile 均以它为基准，位于 AxeMachine 下）
-local STACKING_TRIGGER_NAME = "TouchedStacking"
+-- 生产瞬间粒子（ReplicatedStorage/Instances/Prefabs/VFX/ProduceVFX）
+local PRODUCE_VFX_NAME = "ProduceVFX"
+local PRODUCE_VFX_EMIT_COUNT = 15
+local PRODUCE_VFX_CLONE_LIFETIME = 2
+-- 堆叠区落点 Part（WoodPile 挂在其下，位于 AxeMachine 下）
+local STACKING_ANCHOR_NAME = "TouchedStacking"
 local WOOD_PILE_FOLDER_NAME = "WoodPile"
--- 触发堆叠后，木材 tween 到码放位的时长
-local WOOD_TWEEN_TIME = 0.4
--- 兜底：木材生成后若超时仍未触碰触发区，则强制堆叠（防止卡轨）
-local WOOD_FALLBACK_TIME = 8
+-- 兜底：木材生成后若超时仍未到达落点，则强制传送到落点位置（防止卡轨）
+local WOOD_FALLBACK_TIME = 16
+-- 木材滚落点判定距离（stud），不再依赖 TouchedStacking 碰撞
+local WOOD_ARRIVAL_DISTANCE = 4
+-- 客户端检测身边木头的间隔与范围（与服务端 WoodCarryService 去抖一致）
+local PICKUP_CHECK_INTERVAL = 0.25
+local PICKUP_DETECTION_BOX_SIZE = Vector3.new(6, 6, 6)
 -- 木材生成位置：斧子前方的单位数（沿斧子朝向），落到轨道上
 local WOOD_SPAWN_FORWARD = 8
 
@@ -70,15 +99,22 @@ local AxeProductionController = {
 	_started = false,
 }
 
+type AxeAnimTracks = {
+	idle: AnimationTrack?,
+	action: AnimationTrack,
+}
+
 -- 斧子模型 -> 缓存的动画轨道
-local trackByAxe: { [Model]: AnimationTrack } = {}
+local tracksByAxe: { [Model]: AxeAnimTracks } = {}
 -- 斧子模型 -> 缓存的砍木音效
 local soundByAxe: { [Model]: Sound } = {}
--- 基地折叠 -> 已堆叠木材数（用于计算下一码放位）
-local stackCountByBase: { [Instance]: number } = {}
--- 基地折叠 -> 飞行中（tween 入堆途中）的木材及其重定向函数。
--- 拾取清堆时计数归零，飞行中的木头须重新取低位槽，否则会按旧槽位浮空码放
-local inFlightByBase: { [Instance]: { [Model]: () -> () } } = {}
+-- 基地 -> 尚未收走的木头模型 -> 木种 category
+local activeWoodByBase: { [Instance]: { [Model]: string } } = {}
+-- 客户端上次发起 WoodPickup 请求的时间
+local lastPickupRequestAt = 0
+-- 最近一次请求收集时，检测范围内待移除的木头（model + category）
+type PendingPickupWood = { model: Model, category: string }
+local pendingPickupWoods: { PendingPickupWood } = {}
 
 -- Billboard 预制体
 local function getBillboardPrefab(): BillboardGui?
@@ -180,6 +216,8 @@ local function applyBillboardInfo(billboard: BillboardGui, category: string)
 	end
 end
 
+local setupAxeAnimation: (axe: Model) -> ()
+
 -- 给斧子挂 Billboard（已挂则跳过）
 local function attachBillboard(axe: Model)
 	if axe:FindFirstChild("AxeBillboard") then
@@ -196,6 +234,7 @@ local function attachBillboard(axe: Model)
 	billboard.Adornee = axe.PrimaryPart or axe:FindFirstChildWhichIsA("BasePart")
 	billboard.Parent = axe
 	fitBillboardWhenReady(billboard, axe)
+	setupAxeAnimation(axe)
 
 	local category = axe:GetAttribute(AttributeEnum.Category)
 	if type(category) == "string" then
@@ -225,43 +264,125 @@ end
 -- 前置声明：砍中瞬间的音效与粒子表现（定义在下方，由动画关键帧标记触发）
 local playChopEffects: (axe: Model) -> ()
 
--- 取（或创建并缓存）斧子的 axe_action 动画轨道
-local function getAxeTrack(axe: Model): AnimationTrack?
-	local cached = trackByAxe[axe]
+local function getAnimator(model: Model): Animator?
+	local controller = model:FindFirstChildOfClass("AnimationController")
+		or model:FindFirstChildOfClass("Humanoid")
+	if not controller then
+		return nil
+	end
+	return controller:FindFirstChildOfClass("Animator")
+end
+
+local function loadAnimTrack(animator: Animator, animId: string, looped: boolean, priority: Enum.AnimationPriority): AnimationTrack?
+	local animation = Instance.new("Animation")
+	animation.AnimationId = animId
+	local ok, track = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+	if not ok or not track then
+		animation:Destroy()
+		return nil
+	end
+	track.Looped = looped
+	track.Priority = priority
+	return track
+end
+
+local function playAxeIdle(axe: Model)
+	local tracks = tracksByAxe[axe]
+	if not tracks or not tracks.idle then
+		return
+	end
+	local idleTrack = tracks.idle
+	if tracks.action.IsPlaying then
+		tracks.action:Stop()
+	end
+	if idleTrack.IsPlaying then
+		return
+	end
+	idleTrack:Play()
+end
+
+-- 取（或创建并缓存）斧子同名子模型的 idle / action 动画轨道
+local function getAxeTracks(axe: Model): AxeAnimTracks?
+	local cached = tracksByAxe[axe]
 	if cached then
 		return cached
 	end
 
-	-- 人物 rig 的 Animator 挂在 Humanoid 下，普通模型则用 AnimationController
-	local controller = axe:FindFirstChildOfClass("AnimationController")
-		or axe:FindFirstChildOfClass("Humanoid")
-	if not controller then
+	local category = axe:GetAttribute(AttributeEnum.Category)
+	if type(category) ~= "string" then
 		return nil
 	end
-	local animator = controller:FindFirstChildOfClass("Animator")
+
+	local animModel = resolveAnimModel(axe)
+	if not animModel then
+		return nil
+	end
+
+	local animator = getAnimator(animModel)
 	if not animator then
 		return nil
 	end
 
-	local animation = Instance.new("Animation")
-	animation.AnimationId = resolveAxeAnimId(axe)
-	local track = animator:LoadAnimation(animation)
-	trackByAxe[axe] = track
+	local animInfo = resolveAxeAnimInfo(category)
+	local actionTrack = loadAnimTrack(animator, animInfo.actionId, false, Enum.AnimationPriority.Action)
+	if not actionTrack then
+		return nil
+	end
 
-	-- 播放到 "Event" 关键帧标记（斧子劈中木头瞬间）时播放音效与粒子
-	track:GetMarkerReachedSignal(CHOP_MARKER_NAME):Connect(function()
+	local idleTrack: AnimationTrack? = nil
+	if animInfo.idleId then
+		idleTrack = loadAnimTrack(animator, animInfo.idleId, true, Enum.AnimationPriority.Idle)
+	end
+
+	local tracks: AxeAnimTracks = {
+		idle = idleTrack,
+		action = actionTrack,
+	}
+	tracksByAxe[axe] = tracks
+
+	actionTrack:GetMarkerReachedSignal(CHOP_MARKER_NAME):Connect(function()
 		playChopEffects(axe)
 	end)
 
-	-- 斧子销毁时清理缓存
-	axe.Destroying:Connect(function()
-		trackByAxe[axe] = nil
+	actionTrack.Stopped:Connect(function()
+		playAxeIdle(axe)
 	end)
 
-	return track
+	axe.Destroying:Connect(function()
+		tracksByAxe[axe] = nil
+	end)
+
+	return tracks
 end
 
--- 堆叠区下的视觉容器（背负 pickup 时整夹清空）
+function setupAxeAnimation(axe: Model)
+	local function trySetup(): boolean
+		if tracksByAxe[axe] then
+			return true
+		end
+		local tracks = getAxeTracks(axe)
+		if not tracks then
+			return false
+		end
+		playAxeIdle(axe)
+		return true
+	end
+
+	if trySetup() then
+		return
+	end
+
+	local connection: RBXScriptConnection
+	connection = axe:GetAttributeChangedSignal(AttributeEnum.Category):Connect(function()
+		if trySetup() then
+			connection:Disconnect()
+		end
+	end)
+end
+
+-- 堆叠区下的视觉容器
 local function getWoodPileFolder(anchorPart: BasePart): Folder
 	local existing = anchorPart:FindFirstChild(WOOD_PILE_FOLDER_NAME)
 	if existing and existing:IsA("Folder") then
@@ -275,126 +396,194 @@ end
 
 local localPlayer = Players.LocalPlayer
 
-local function clearWoodPile(base: Instance)
-	local axeMachine = base:FindFirstChild("InmateMachine")
-	local anchorPart = axeMachine and axeMachine:FindFirstChild(STACKING_TRIGGER_NAME)
-	if not anchorPart or not anchorPart:IsA("BasePart") then
+local function unregisterWood(base: Instance, wood: Model)
+	local bucket = activeWoodByBase[base]
+	if bucket then
+		bucket[wood] = nil
+	end
+end
+
+local function registerWood(base: Instance, wood: Model, woodCategory: string)
+	local bucket = activeWoodByBase[base]
+	if not bucket then
+		bucket = {}
+		activeWoodByBase[base] = bucket
+	end
+	bucket[wood] = woodCategory
+	wood.Destroying:Connect(function()
+		unregisterWood(base, wood)
+	end)
+end
+
+-- 扫描 Workspace.World 下本地玩家的基地
+local function findMyBase(): Instance?
+	local world = Workspace:FindFirstChild("World")
+	if not world then
+		return nil
+	end
+	for _, child in world:GetChildren() do
+		if child:IsA("Folder") and string.match(child.Name, "^Base_%d+$") then
+			if child:GetAttribute(AttributeEnum.OwnerId) == localPlayer.UserId then
+				return child
+			end
+		end
+	end
+	return nil
+end
+
+local function isPartNearPlayer(part: BasePart, rootPart: BasePart): boolean
+	local overlapParams = OverlapParams.new()
+	overlapParams.FilterType = Enum.RaycastFilterType.Include
+	overlapParams.FilterDescendantsInstances = { part }
+	local found = Workspace:GetPartBoundsInBox(CFrame.new(rootPart.Position), PICKUP_DETECTION_BOX_SIZE, overlapParams)
+	return #found > 0
+end
+
+-- 按服务端 taken 明细，只销毁本次请求时记录在范围内的木头模型
+local function removePendingWoodVisuals(taken: { [string]: number })
+	for category, count in taken do
+		local remaining = math.floor(tonumber(count) or 0)
+		if remaining <= 0 then
+			continue
+		end
+		for index = #pendingPickupWoods, 1, -1 do
+			if remaining <= 0 then
+				break
+			end
+			local entry = pendingPickupWoods[index]
+			if entry.category == category and entry.model.Parent then
+				entry.model:Destroy()
+				table.remove(pendingPickupWoods, index)
+				remaining -= 1
+			end
+		end
+	end
+end
+
+-- 木头是否已落入堆叠区（Parent 为 WoodPile 文件夹）；未落地的仍在 Workspace 飞行
+local function isWoodLanded(wood: Model): boolean
+	local parent = wood.Parent
+	return parent ~= nil and parent.Name == WOOD_PILE_FOLDER_NAME
+end
+
+-- 自动收集（无近接记录）时，按服务端 taken 明细直接从基地木堆销毁对应数量的模型
+-- 优先销毁「已落地」的木头（与服务端只收成熟木头一致），不足时再用未落地的补足，避免残留幽灵
+local function removeWoodVisualsFromBase(base: Instance, taken: { [string]: number })
+	local bucket = activeWoodByBase[base]
+	if not bucket then
 		return
 	end
-	local pile = anchorPart:FindFirstChild(WOOD_PILE_FOLDER_NAME)
-	if pile then
-		-- 本地玩家拾取自家堆叠区：地面堆模型整体过继给背负控制器复用
-		-- （免销毁 + 免克隆，消除拾取瞬间的单帧尖峰）；其他玩家的堆照常清空
-		if base:GetAttribute(AttributeEnum.OwnerId) == localPlayer.UserId then
-			local models: { Model } = {}
-			for _, child in pile:GetChildren() do
-				if child:IsA("Model") then
-					models[#models + 1] = child
+	local toRemove: { Model } = {}
+	for category, count in taken do
+		local remaining = math.floor(tonumber(count) or 0)
+		if remaining <= 0 then
+			continue
+		end
+		-- 第一遍：已落地的
+		for wood, woodCategory in bucket do
+			if remaining <= 0 then
+				break
+			end
+			if woodCategory == category and wood.Parent and isWoodLanded(wood) then
+				table.insert(toRemove, wood)
+				remaining -= 1
+			end
+		end
+		-- 第二遍：仍在飞行的补足，保证删够 taken 件
+		if remaining > 0 then
+			for wood, woodCategory in bucket do
+				if remaining <= 0 then
+					break
+				end
+				if woodCategory == category and wood.Parent and not isWoodLanded(wood) then
+					table.insert(toRemove, wood)
+					remaining -= 1
 				end
 			end
-			if #models > 0 then
-				CharacterBackpackController:adoptModels(models)
-			end
 		end
-		pile:ClearAllChildren()
 	end
-	stackCountByBase[base] = 0
-
-	-- 计数已归零：飞行中的木头重定向到新的低位槽，否则会按拾取前的旧槽位浮空码放
-	local flights = inFlightByBase[base]
-	if flights then
-		for _, retarget in flights do
-			retarget()
-		end
+	for _, wood in toRemove do
+		wood:Destroy()
 	end
 end
 
--- 堆叠整体码放偏移（锚点局部空间）：Y 向下 6，向后（+Z）方向（-1）
-local STACK_AREA_OFFSET = Vector3.new(0, -6, -1)
+local function scanWoodInRange(
+	rootPart: BasePart,
+	bucket: { [Model]: string }
+): ({ [string]: number }, { PendingPickupWood })
+	local byCategory: { [string]: number } = {}
+	local inRangeEntries: { PendingPickupWood } = {}
 
--- 计算下一个木材的码放世界 CFrame（以堆叠锚点为基准）
-local function getNextStackCFrame(base: Instance, anchorPart: BasePart): CFrame
-	local n = stackCountByBase[base] or 0
-	stackCountByBase[base] = n + 1
-	local offset = WoodStackVisual.getGridOffset(n, WoodStackVisual.GROUND_BASE_HEIGHT_OFFSET) + STACK_AREA_OFFSET
-	return anchorPart.CFrame * CFrame.new(offset)
+	for wood, category in bucket do
+		if not wood.Parent then
+			continue
+		end
+		local part = wood.PrimaryPart or wood:FindFirstChildWhichIsA("BasePart")
+		if part and isPartNearPlayer(part, rootPart) then
+			byCategory[category] = (byCategory[category] or 0) + 1
+			table.insert(inRangeEntries, { model = wood, category = category })
+		end
+	end
+
+	return byCategory, inRangeEntries
 end
 
--- 将木材从当前位置 tween 到码放位，到位后归入 WoodPile（堆叠定型）。
--- 飞行期间登记到 inFlightByBase，拾取清堆时可重定向到归零后的新低位槽
-local function tweenWoodToStack(wood: Model, base: Instance, anchorPart: BasePart)
-	-- 先固定，停止物理，避免物理与 tween 互相打架
-	WoodStackVisual.prepareStaticModel(wood)
+local function tryRequestWoodPickup()
+	local now = os.clock()
+	if now - lastPickupRequestAt < PICKUP_CHECK_INTERVAL then
+		return
+	end
 
-	local cfValue = Instance.new("CFrameValue")
-	cfValue.Value = wood:GetPivot()
-	local moveConnection = cfValue:GetPropertyChangedSignal("Value"):Connect(function()
-		if wood.Parent then
-			wood:PivotTo(cfValue.Value)
+	local character = localPlayer.Character
+	if not character then
+		return
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart or not rootPart:IsA("BasePart") then
+		return
+	end
+
+	local base = findMyBase()
+	if not base then
+		return
+	end
+	local bucket = activeWoodByBase[base]
+	if not bucket then
+		return
+	end
+
+	local byCategory, inRangeEntries = scanWoodInRange(rootPart, bucket)
+	if next(byCategory) == nil then
+		return
+	end
+
+	lastPickupRequestAt = now
+	pendingPickupWoods = inRangeEntries
+	Network.fireServer(RemoteEventKey.WoodPickup, byCategory)
+end
+
+local function startProximityPickupLoop()
+	task.spawn(function()
+		while true do
+			task.wait(PICKUP_CHECK_INTERVAL)
+			tryRequestWoodPickup()
 		end
 	end)
-
-	local baseFlights = inFlightByBase[base]
-	if not baseFlights then
-		baseFlights = {}
-		inFlightByBase[base] = baseFlights
-	end
-
-	local currentTween: Tween? = nil
-
-	local function finish(goalCF: CFrame)
-		baseFlights[wood] = nil
-		moveConnection:Disconnect()
-		cfValue:Destroy()
-		if wood.Parent then
-			wood:PivotTo(goalCF)
-			wood.Parent = getWoodPileFolder(anchorPart)
-		end
-	end
-
-	-- 从当前位置 tween 到指定槽位；重定向时取消旧 tween 从中途位置续飞
-	local function playTo(goalCF: CFrame)
-		if currentTween then
-			currentTween:Cancel()
-		end
-		local tween = TweenService:Create(
-			cfValue,
-			TweenInfo.new(WOOD_TWEEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Value = goalCF }
-		)
-		currentTween = tween
-		tween.Completed:Connect(function(state)
-			-- Cancel 也会触发 Completed，仅在真正播完时定型
-			if state == Enum.PlaybackState.Completed then
-				finish(goalCF)
-			end
-		end)
-		tween:Play()
-	end
-
-	-- 木材意外销毁时清理登记，防止重定向访问已销毁实例
-	wood.Destroying:Once(function()
-		baseFlights[wood] = nil
-		moveConnection:Disconnect()
-		cfValue:Destroy()
-	end)
-
-	baseFlights[wood] = function()
-		playTo(getNextStackCFrame(base, anchorPart))
-	end
-	playTo(getNextStackCFrame(base, anchorPart))
 end
 
--- 生成一件木材：物理下落、顺轨道滚动，触碰 TouchedStacking 后再 tween 入堆
+-- 生成一件木材：物理下落、顺轨道滚动，散落在堆叠区落点附近
 local function spawnAndStackWood(axe: Model, woodCategory: string)
 	local base = findBaseAncestor(axe)
 	if not base then
 		return
 	end
 	local axeMachine = base:FindFirstChild("InmateMachine")
-	-- TouchedStacking 既是滚动触发区，也作为堆叠锚点
-	local triggerPart = axeMachine and axeMachine:FindFirstChild(STACKING_TRIGGER_NAME)
-	if not triggerPart or not triggerPart:IsA("BasePart") then
+	local anchorPart = axeMachine and axeMachine:FindFirstChild(STACKING_ANCHOR_NAME)
+	if not anchorPart or not anchorPart:IsA("BasePart") then
 		return
 	end
 
@@ -404,42 +593,44 @@ local function spawnAndStackWood(axe: Model, woodCategory: string)
 	end
 
 	local wood = prefab:Clone()
-	-- 物理滚动态：不锚定，靠 RootPart 球体顺轨道滚动
 	WoodStackVisual.preparePhysicalModel(wood)
 
 	local root = wood.PrimaryPart or wood:FindFirstChildWhichIsA("BasePart")
-	-- 在斧子前方 WOOD_SPAWN_FORWARD 个单位处生成，并绕竖直轴旋转 90°，让木头落到轨道上
 	wood:PivotTo(getAxeSpawnCFrame(axe) * CFrame.new(0, 0, -WOOD_SPAWN_FORWARD) * CFrame.Angles(0, math.rad(90), 0))
 	wood.Parent = Workspace
+	registerWood(base, wood, woodCategory)
 
-	-- 仅触发一次：触碰触发区或超时兜底，均切换为入堆 tween
-	local stacked = false
-	local touchConnection: RBXScriptConnection? = nil
-	local function beginStack()
-		if stacked then
+	local arrived = false
+	local function markArrived()
+		if arrived then
 			return
 		end
-		stacked = true
-		if touchConnection then
-			touchConnection:Disconnect()
-			touchConnection = nil
-		end
+		arrived = true
 		if wood.Parent then
-			tweenWoodToStack(wood, base, triggerPart)
+			wood.Parent = getWoodPileFolder(anchorPart)
 		end
 	end
 
-	-- 监听木材滚入 TouchedStacking 触发区
-	if root then
-		touchConnection = root.Touched:Connect(function(hit)
-			if hit == triggerPart then
-				beginStack()
+	-- 距离判定滚落到位（不再监听 TouchedStacking 碰撞）
+	task.spawn(function()
+		while wood.Parent and not arrived do
+			if root and (root.Position - anchorPart.Position).Magnitude <= WOOD_ARRIVAL_DISTANCE then
+				markArrived()
+				break
 			end
-		end)
-	end
+			task.wait(0.2)
+		end
+	end)
 
-	-- 兜底：超时仍未触碰（卡轨/掉落异常）则强制入堆
-	task.delay(WOOD_FALLBACK_TIME, beginStack)
+	task.delay(WOOD_FALLBACK_TIME, function()
+		if arrived then
+			return
+		end
+		markArrived()
+		if wood.Parent then
+			wood:PivotTo(anchorPart.CFrame)
+		end
+	end)
 end
 
 -- 取（或创建并缓存）斧子的砍木音效：挂在斧子部件上，随部件位置形成 3D 空间音效
@@ -478,6 +669,59 @@ end
 -- 砍木粒子挂点名称（服务端放置斧子时建在斧刃 MeshPart Axe.Axe 上，见 Slot.attachChopEmitters）
 local CHOP_VFX_ATTACHMENT_NAME = "ChopVFXAttachment"
 
+local function getProduceVfxPrefab(): BasePart?
+	local instances = ReplicatedStorage:FindFirstChild("Instances")
+	local prefabs = instances and instances:FindFirstChild("Prefabs")
+	local vfxFolder = prefabs and prefabs:FindFirstChild("VFX")
+	local prefab = vfxFolder and vfxFolder:FindFirstChild(PRODUCE_VFX_NAME)
+	if prefab and prefab:IsA("BasePart") then
+		return prefab
+	end
+	return nil
+end
+
+-- 在指定世界坐标克隆 ProduceVFX 并 Emit 一次（逻辑与 TouchButtonVFXController 一致）
+local function emitProduceVfxAt(cframe: CFrame)
+	local prefab = getProduceVfxPrefab()
+	if not prefab then
+		return
+	end
+
+	local clone = prefab:Clone()
+	clone.CFrame = cframe
+	clone.Parent = Workspace
+
+	for _, descendant in clone:GetDescendants() do
+		if descendant:IsA("ParticleEmitter") then
+			local emitter = descendant
+			local emitCount = tonumber(emitter:GetAttribute("EmitCount")) or PRODUCE_VFX_EMIT_COUNT
+			local emitDelay = tonumber(emitter:GetAttribute("EmitDelay")) or 0
+			if emitDelay > 0 then
+				task.delay(emitDelay, function()
+					if emitter.Parent then
+						emitter:Emit(emitCount)
+					end
+				end)
+			else
+				emitter:Emit(emitCount)
+			end
+		end
+	end
+
+	task.delay(PRODUCE_VFX_CLONE_LIFETIME, function()
+		clone:Destroy()
+	end)
+end
+
+-- 在动画模型位置播放 ProduceVFX
+local function emitProduceVfx(axe: Model)
+	local animModel = resolveAnimModel(axe)
+	if not animModel or not animModel.Parent then
+		return
+	end
+	emitProduceVfxAt(animModel:GetPivot())
+end
+
 -- 发射斧刃挂点上的砍木粒子（服务端放置斧子时从 DepositVFX 克隆而来）
 local function emitChopParticles(axe: Model)
 	local axePiece = axe:FindFirstChild("Axe")
@@ -494,7 +738,7 @@ local function emitChopParticles(axe: Model)
 	end
 end
 
--- 砍中瞬间表现：播放砍木音效并发射斧刃挂点粒子（由动画 "Event" 关键帧标记触发）
+-- 砍中瞬间表现：播放砍木音效、斧刃粒子与 ProduceVFX（由动画 "Event" 关键帧标记触发）
 function playChopEffects(axe: Model)
 	-- 动画播放期间斧子可能已销毁（合成/清场），音效随部件一并销毁
 	if not axe.Parent then
@@ -508,17 +752,21 @@ function playChopEffects(axe: Model)
 		sound:Play()
 	end
 	emitChopParticles(axe)
+	emitProduceVfx(axe)
 end
 
 local function playAxeAction(axe: Model)
-	local track = getAxeTrack(axe)
-	if not track then
+	local tracks = getAxeTracks(axe)
+	if not tracks then
 		return
 	end
-	if track.IsPlaying then
-		track:Stop()
+	if tracks.idle and tracks.idle.IsPlaying then
+		tracks.idle:Stop()
 	end
-	track:Play()
+	if tracks.action.IsPlaying then
+		tracks.action:Stop()
+	end
+	tracks.action:Play()
 end
 
 -- 处理一次生产事件（动画已在 produceAnim 中提前播放）
@@ -585,6 +833,7 @@ function AxeProductionController:init()
 	self._started = true
 
 	task.spawn(watchWorld)
+	startProximityPickupLoop()
 
 	Network.connectEvent(RemoteEventKey.AxeTycoonSync, function(payload)
 		if type(payload) ~= "table" then
@@ -597,10 +846,20 @@ function AxeProductionController:init()
 				onProduce(payload.axe, payload.wood)
 			end
 		elseif payload.kind == "pickup" and typeof(payload.base) == "Instance" then
-			clearWoodPile(payload.base)
+			local taken = if type(payload.taken) == "table" then payload.taken else nil
+			if taken then
+				if payload.silent then
+					-- 自动收集：无近接记录，直接从基地木堆按明细销毁
+					removeWoodVisualsFromBase(payload.base, taken)
+				else
+					removePendingWoodVisuals(taken)
+				end
+			end
 			-- 本地玩家自己拾取时，在 HUD WoodAmount 上方弹出拾取飘字（明细由服务端随广播下发）
+			-- silent 为 true（如自动收集通行证）时只清理模型、不弹飘字
 			if
-				type(payload.taken) == "table"
+				not payload.silent
+				and type(payload.taken) == "table"
 				and payload.base:GetAttribute(AttributeEnum.OwnerId) == localPlayer.UserId
 			then
 				SoundService.SFX.TryOnAdd:Play()

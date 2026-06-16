@@ -13,7 +13,7 @@
 local AxePriceConfig = {}
 
 AxePriceConfig.BASE_PRICE = 5 -- 基础单价
-AxePriceConfig.GROWTH = 2 -- 每拥有一把斧子的单价增量
+AxePriceConfig.GROWTH = 1 -- 每拥有一把斧子的单价增量
 AxePriceConfig.MAX_AXES = 100 -- 斧子总数上限（与 100 槽位一致）
 AxePriceConfig.Bundles = { 1, 5, 25, 100 } -- 可购买的批量规格（对应 BuyAxe_N 按钮）
 AxePriceConfig.AUTO_MERGE_BUNDLE_SIZE = 100 -- 购买该批量后自动链式合成

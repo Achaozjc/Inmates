@@ -37,8 +37,11 @@ local FLY_DIST_MIN = 1.0
 local FLY_DIST_MAX = 1.8
 -- 弹射角度散布：以竖直向上为基准，左右各偏最多此角度（弧度）
 local FLY_ANGLE_RANGE = math.rad(70)
--- 飘字基础尺寸（相对锚点框）；字号随数值增大，最高放大到基础的 MAX_SIZE_SCALE 倍
+-- 飘字承载框尺寸（相对锚点框，固定不随数值变化；字号通过 TextSize 显式控制）
 local LABEL_SIZE = UDim2.fromScale(0.6, 0.55)
+-- 基础字号占锚点框高度的比例；最终 TextSize = 框高 × 此比例 × 数值缩放
+local BASE_TEXT_SCALE = 0.5
+-- 字号随数值增大，最高放大到基础的 MAX_SIZE_SCALE 倍
 local MAX_SIZE_SCALE = 2
 -- 起始位置散布范围（相对锚点框：X 居中小幅散布，Y 紧贴框顶）
 local START_X_MIN = 0.35
@@ -51,17 +54,25 @@ local PULL_INFO = TweenInfo.new(PULL_TIME, Enum.EasingStyle.Quad, Enum.EasingDir
 
 local WoodPickupPopup = {}
 
--- 配置中的最高稀有度（value 随稀有度指数增长，故按稀有度线性映射字号 ≈ 按 log(value) 映射）
-local MAX_RARITY = 1
+-- 配置中木头单件价值的区间（value 指数增长，故按 log(value) 映射字号，使视觉差异均匀）
+local MIN_VALUE = math.huge
+local MAX_VALUE = 1
 for _, info in WoodConfig.Woods do
-	if info.rarity > MAX_RARITY then
-		MAX_RARITY = info.rarity
+	if info.value < MIN_VALUE then
+		MIN_VALUE = info.value
+	end
+	if info.value > MAX_VALUE then
+		MAX_VALUE = info.value
 	end
 end
+local LOG_MIN_VALUE = math.log(math.max(1, MIN_VALUE))
+local LOG_MAX_VALUE = math.log(math.max(MIN_VALUE + 1, MAX_VALUE))
 
--- 稀有度 → 字号缩放：最低 1 倍，最高 MAX_SIZE_SCALE 倍
-local function getSizeScale(rarity: number): number
-	local alpha = (rarity - 1) / math.max(1, MAX_RARITY - 1)
+-- 数值 → 字号缩放：按 log(value) 在 [MIN_VALUE, MAX_VALUE] 内线性映射到 [1, MAX_SIZE_SCALE]，
+-- 数值越大字号越大（与文本数值正相关）
+local function getSizeScale(value: number): number
+	local logValue = math.log(math.max(1, value))
+	local alpha = (logValue - LOG_MIN_VALUE) / math.max(1e-6, LOG_MAX_VALUE - LOG_MIN_VALUE)
 	return 1 + math.clamp(alpha, 0, 1) * (MAX_SIZE_SCALE - 1)
 end
 
@@ -83,7 +94,9 @@ local function getTemplate(): TextLabel
 	label.AnchorPoint = Vector2.new(0.5, 1)
 	label.BackgroundTransparency = 1
 	label.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.ExtraBold, Enum.FontStyle.Normal)
-	label.TextScaled = true
+	-- 关闭 TextScaled：否则长数字会被压小、与短数字视觉同号，无法体现数值大小
+	label.TextScaled = false
+	label.TextWrapped = false
 	label.ZIndex = 10
 	label.Text = ""
 
@@ -119,8 +132,9 @@ local function popOne(parent: Frame, text: string, color: Color3, sizeScale: num
 	label.Text = text
 	label.TextColor3 = color
 	label.TextTransparency = 0
-	-- 字号随数值放大（TextScaled 跟随框尺寸缩放）
-	label.Size = UDim2.fromScale(LABEL_SIZE.X.Scale * sizeScale, LABEL_SIZE.Y.Scale * sizeScale)
+	-- 承载框尺寸固定，字号通过 TextSize 随数值显式放大（按框高换算，分辨率无关）
+	label.Size = LABEL_SIZE
+	label.TextSize = math.max(1, math.round(parent.AbsoluteSize.Y * BASE_TEXT_SCALE * sizeScale))
 	if stroke and stroke:IsA("UIStroke") then
 		stroke.Transparency = 0
 	end
@@ -196,7 +210,7 @@ function WoodPickupPopup.show(taken: { [string]: number })
 				count = pieceCount,
 				text = "+" .. WoodConfig.formatWoodQuantity(info.value),
 				color = RarityColorConfig.getColor(info.rarity),
-				sizeScale = getSizeScale(info.rarity),
+				sizeScale = getSizeScale(info.value),
 			}
 		end
 	end

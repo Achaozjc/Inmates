@@ -285,7 +285,7 @@ local STEPS: { Step } = {
 	{
 		key = TutorialStepKey.BuyAxe,
 		flag = "buyAxeDone",
-		hintText = "Step on the Buy Button to hire your first Lumberjack!",
+		hintText = "Step on the button to get your first inmate!",
 		resolveTarget = function()
 			return findBaseButton("BuyAxe_1")
 		end,
@@ -301,7 +301,7 @@ local STEPS: { Step } = {
 	{
 		key = TutorialStepKey.CollectWood,
 		flag = "collectWoodDone",
-		hintText = "Lumberjacks chop wood! Wait for the wood and collect it!",
+		hintText = "Inmates work for you! Wait for the items they make and collect them!",
 		resolveTarget = findStackingPart,
 		shouldSkip = function()
 			return ownsGamepass(AttributeEnum.GamepassAutoCollectWood)
@@ -321,7 +321,7 @@ local STEPS: { Step } = {
 	{
 		key = TutorialStepKey.DepositWood,
 		flag = "depositWoodDone",
-		hintText = "Carry your stack of wood and deposit it for processing!",
+		hintText = "Carry the items and deposit them for processing!",
 		resolveTarget = function()
 			return findBaseButton("Storage","Touch_Collection")
 		end,
@@ -351,6 +351,11 @@ local STEPS: { Step } = {
 			-- 完成判定：待收现金出现过、随后归零（玩家触碰 CollectMoney 全额领取）
 			local seenPending = getPendingCash() > 0
 			return function()
+				-- 自动收钱通行证属性可能晚于本步开始才复制到客户端：一旦检测到拥有即视为完成，
+				-- 否则自动收集会抢先领走 PendingCash，玩家无法手动触发归零，导致本步卡死
+				if ownsGamepass(AttributeEnum.GamepassAutoCollectCash) then
+					return true
+				end
 				local pending = getPendingCash()
 				if pending > 0 then
 					seenPending = true
@@ -452,7 +457,7 @@ local function runTutorial()
 
 	-- 仅本次会话真正引导过才显示完成祝贺
 	if guidedAny then
-		GuideHintStyle.setMessage("Tutorial complete! Get to choppin, lumber boss!")
+		GuideHintStyle.setMessage("Tutorial complete! Good luck on your prison empire, warden!")
 		task.wait(FINISH_HOLD_SECONDS)
 	end
 	GuideHintStyle.hide()

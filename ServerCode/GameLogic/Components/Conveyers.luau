@@ -19,6 +19,7 @@ end
 
 function Conveyers.init(self:ClassType)
 	self._instance.Anchored = true
+	self._instance.CollisionGroup = "WoodBlock"
 	self._instance.AssemblyLinearVelocity = -self._instance.CFrame.RightVector * FORCE
 end
 

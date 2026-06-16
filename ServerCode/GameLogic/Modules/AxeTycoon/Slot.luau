@@ -153,9 +153,9 @@ function Slot.placeAxe(self: ClassType, category: string): boolean
 		model.PrimaryPart = model:FindFirstChildWhichIsA("BasePart")
 	end
 
-	-- 视觉朝向额外 Y 轴 180°；产木/宝箱生成沿用槽位 Attachment 原始朝向（见 OriginalCFrame 属性）
+	-- 视觉朝向取当前方向的反方向（沿用槽位 Attachment 原始朝向）；产木/宝箱生成沿用槽位 Attachment 原始朝向（见 OriginalCFrame 属性）
 	model:SetAttribute(AttributeEnum.OriginalCFrame, self._attachment.WorldCFrame)
-	model:PivotTo(self._attachment.WorldCFrame * CFrame.Angles(0, math.rad(180), 0))
+	model:PivotTo(self._attachment.WorldCFrame)
 
 	-- 驯服 Humanoid：关闭物理/下落/布娃娃等状态机，隐藏名字，避免大量斧子角色跑物理掉帧
 	local humanoid = model:FindFirstChildOfClass("Humanoid")

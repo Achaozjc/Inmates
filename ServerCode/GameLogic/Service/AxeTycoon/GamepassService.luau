@@ -30,6 +30,7 @@ local StoreIdCategory = require(ReplicatedCode.GameLogic.SharedConstants.Categor
 local PlayerDataKey = require(ReplicatedCode.GameLogic.SharedConstants.Keys.PlayerDataKey)
 local PlayerDataServer = require(ServerCode.Framework.DataStore.PlayerData.PlayerDataServer)
 local DebouncedPlayerSave = require(ServerCode.GameLogic.Modules.AxeTycoon.DebouncedPlayerSave)
+local TycoonState = require(ServerCode.GameLogic.Modules.AxeTycoon.TycoonState)
 local CollectMoneyService = require(ServerCode.GameLogic.Service.AxeTycoon.CollectMoneyService)
 local WoodCarryService = require(ServerCode.GameLogic.Service.AxeTycoon.WoodCarryService)
 local ProcessorService = require(ServerCode.GameLogic.Service.AxeTycoon.ProcessorService)
@@ -128,9 +129,13 @@ local function autoTick()
 		end
 
 		if autoWoodId and autoWoodId > 0 and ownsId(player, autoWoodId) then
-			-- 静默拾取：自动收集时不在 HUD 弹出拾取飘字
-			WoodCarryService.pickup(player, true)
-			ProcessorService.deposit(player)
+			-- 只收已落入堆叠区（成熟）的木头，刚产出仍在飞行的不收
+			local matureTotal = TycoonState.getMatureGroundTotal(player.UserId)
+			if matureTotal > 0 then
+				-- 静默 + 仅成熟拾取：自动收集时不在 HUD 弹出拾取飘字
+				WoodCarryService.pickup(player, true, matureTotal, true)
+				ProcessorService.deposit(player)
+			end
 		end
 	end
 end

@@ -1,25 +1,25 @@
 --!strict
 
 --[[
-	木头背负服务（服务端权威）。
+	木头收集服务（服务端权威）。
 
-	堆叠区有木头时，每秒检测基地下名为 TouchedStacking 的 Part 区域内
-	是否站着基地主人，是则将堆叠区木头转入 PlayerData.AxeTycoon.carrying，
-	一次背走全部、无背负上限；支持多种木种并存（见实现计划 §八）。
+	客户端每 CHECK_INTERVAL 秒统计检测范围内各木种数量并 fire WoodPickup(byCategory)；
+	本服务按木种分别扣减堆叠区，再转入 PlayerData.AxeTycoon.carrying。
+	客户端只销毁请求时记录的范围内模型，避免误删传送带上未进入范围的木头。
 
-	堆叠区数据在 TycoonState（内存）；背负持久化在 PlayerData，掉线不丢。
-	成功后广播 AxeTycoonSync { kind = "pickup" }，供客户端清理堆叠区视觉。
+	堆叠区数据在 TycoonState（内存）；carrying 持久化在 PlayerData，掉线不丢。
+	成功后广播 AxeTycoonSync { kind = "pickup" }，供客户端移除对应木头视觉并弹出 UI 飘字。
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
-local Workspace = game:GetService("Workspace")
 
 local ReplicatedCode = ReplicatedStorage:WaitForChild("ReplicatedCode")
 local ServerCode = ServerScriptService:WaitForChild("ServerCode")
 
 local Network = require(ReplicatedCode.Framework.Core.Network)
+local WoodConfig = require(ReplicatedCode.GameLogic.Shared.Configs.WoodConfig)
 local RemoteEventKey = require(ReplicatedCode.GameLogic.SharedConstants.Keys.RemoteEventKey)
 local PlayerDataKey = require(ReplicatedCode.GameLogic.SharedConstants.Keys.PlayerDataKey)
 local PlayerDataServer = require(ServerCode.Framework.DataStore.PlayerData.PlayerDataServer)
@@ -27,15 +27,13 @@ local BaseAssignmentService = require(ServerCode.GameLogic.Service.AxeTycoon.Bas
 local DebouncedPlayerSave = require(ServerCode.GameLogic.Modules.AxeTycoon.DebouncedPlayerSave)
 local TycoonState = require(ServerCode.GameLogic.Modules.AxeTycoon.TycoonState)
 
-local STACKING_PART_NAME = "TouchedStacking"
--- 区域检测间隔（秒）
+-- 客户端请求去抖间隔（秒），与客户端检测周期一致
 local CHECK_INTERVAL = 0.25
 
 local WoodCarryService = {}
 
 local started = false
--- 缓存每个基地解析到的堆叠区 Part，避免每秒重复遍历层级
-local stackingPartCache: { [Folder]: BasePart } = {}
+local lastPickupAt: { [Player]: number } = {}
 
 local function mergeCarrying(target: { [string]: number }, taken: { [string]: number })
 	for category, count in taken do
@@ -43,32 +41,52 @@ local function mergeCarrying(target: { [string]: number }, taken: { [string]: nu
 	end
 end
 
--- 解析基地内的堆叠区 Part（优先 AxeMachine/TouchedStacking，缺失时在基地内递归查找）
-local function resolveStackingPart(base: Folder): BasePart?
-	local cached = stackingPartCache[base]
-	if cached and cached:IsDescendantOf(base) then
-		return cached
+local function canPickup(player: Player): boolean
+	if TycoonState.getGroundTotal(player.UserId) <= 0 then
+		return false
 	end
 
-	local axeMachine = base:FindFirstChild("InmateMachine")
-	local stacking = axeMachine and axeMachine:FindFirstChild(STACKING_PART_NAME)
-	if not (stacking and stacking:IsA("BasePart")) then
-		local found = base:FindFirstChild(STACKING_PART_NAME, true)
-		stacking = if found and found:IsA("BasePart") then found else nil
+	local character = player.Character
+	if not character then
+		return false
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return false
+	end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart or not rootPart:IsA("BasePart") then
+		return false
 	end
 
-	if stacking and stacking:IsA("BasePart") then
-		stackingPartCache[base] = stacking
-		return stacking
-	end
-	return nil
+	return BaseAssignmentService.getBase(player) ~= nil
 end
 
--- 将堆叠区木头全部背到身上（无背负上限）
--- silent 为 true 时（如自动收集通行证）不下发拾取明细，客户端不弹飘字
-function WoodCarryService.pickup(player: Player, silent: boolean?)
-	local groundTotal = TycoonState.getGroundTotal(player.UserId)
-	if groundTotal <= 0 then
+local function sanitizePickupRequest(requested: any): { [string]: number }?
+	if type(requested) ~= "table" then
+		return nil
+	end
+
+	local sanitized: { [string]: number } = {}
+	for category, count in requested do
+		if type(category) == "string" and WoodConfig.Woods[category] then
+			local amount = math.floor(tonumber(count) or 0)
+			if amount > 0 then
+				sanitized[category] = amount
+			end
+		end
+	end
+
+	if next(sanitized) == nil then
+		return nil
+	end
+	return sanitized
+end
+
+-- 按木种从堆叠区背走（与客户端范围内检测结果对应）
+function WoodCarryService.pickupByCategory(player: Player, silent: boolean?, byCategory: { [string]: number })
+	local sanitized = sanitizePickupRequest(byCategory)
+	if not sanitized then
 		return
 	end
 
@@ -77,8 +95,7 @@ function WoodCarryService.pickup(player: Player, silent: boolean?)
 		return
 	end
 
-	-- 不再受 CARRY_LIMIT 约束：一次背走堆叠区全部木头
-	local taken = TycoonState.takeGroundWood(player.UserId, groundTotal)
+	local taken = TycoonState.takeGroundWoodByCategory(player.UserId, sanitized)
 	if next(taken) == nil then
 		return
 	end
@@ -94,52 +111,71 @@ function WoodCarryService.pickup(player: Player, silent: boolean?)
 
 	local base = BaseAssignmentService.getBase(player)
 	if base then
-		-- 木堆表现只在基地主人客户端渲染（见 WoodProductionService），清除事件也只需发给主人
 		Network.fireClient(RemoteEventKey.AxeTycoonSync, player, {
 			kind = "pickup",
 			base = base,
-			-- 拾取明细（类别 → 件数），供客户端按稀有度弹出拾取飘字；静默拾取时不下发
-			taken = if silent then nil else taken,
+			taken = taken,
+			silent = silent,
 		})
 	end
 end
 
--- 判断角色是否在堆叠区 Part 的包围盒内
-local function isCharacterInRegion(part: BasePart, character: Model): boolean
-	local overlapParams = OverlapParams.new()
-	overlapParams.FilterType = Enum.RaycastFilterType.Include
-	overlapParams.FilterDescendantsInstances = { character }
-	local parts = Workspace:GetPartBoundsInBox(part.CFrame, part.Size, overlapParams)
-	return #parts > 0
-end
-
--- 单个玩家的定时检测：有木头且主人站在堆叠区内则触发拾取
-local function checkPlayer(player: Player)
-	if TycoonState.getGroundTotal(player.UserId) <= 0 then
+-- 从堆叠区背走 count 件木头（按库存字典序扣减，供通行证等批量收取）
+-- silent 为 true 时（如自动收集通行证）不下发拾取明细，客户端不弹飘字
+-- matureOnly 为 true 时只背走「已落入堆叠区（成熟）」的木头，刚产出仍在飞行的不收
+function WoodCarryService.pickup(player: Player, silent: boolean?, count: number?, matureOnly: boolean?)
+	local groundTotal = if matureOnly
+		then TycoonState.getMatureGroundTotal(player.UserId)
+		else TycoonState.getGroundTotal(player.UserId)
+	if groundTotal <= 0 then
 		return
 	end
 
-	local character = player.Character
-	if not character then
+	local axeData = PlayerDataServer.getValue(player, PlayerDataKey.AxeTycoon)
+	if type(axeData) ~= "table" then
 		return
 	end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health <= 0 then
+
+	local takeCount = math.clamp(count or 1, 1, groundTotal)
+	local taken = if matureOnly
+		then TycoonState.takeMatureGround(player.UserId, takeCount)
+		else TycoonState.takeGroundWood(player.UserId, takeCount)
+	if next(taken) == nil then
 		return
 	end
+
+	PlayerDataServer.updateValue(player, PlayerDataKey.AxeTycoon, function(data)
+		data = if type(data) == "table" then data else {}
+		local nextCarrying = if type(data.carrying) == "table" then data.carrying else {}
+		mergeCarrying(nextCarrying, taken)
+		data.carrying = nextCarrying
+		return data
+	end)
+	DebouncedPlayerSave.schedule(player)
 
 	local base = BaseAssignmentService.getBase(player)
-	if not base then
+	if base then
+		Network.fireClient(RemoteEventKey.AxeTycoonSync, player, {
+			kind = "pickup",
+			base = base,
+			taken = taken,
+			silent = silent,
+		})
+	end
+end
+
+local function onPickupRequested(player: Player, requestedByCategory: { [string]: number })
+	local now = os.clock()
+	local lastAt = lastPickupAt[player] or 0
+	if now - lastAt < CHECK_INTERVAL then
 		return
 	end
-	local part = resolveStackingPart(base)
-	if not part then
+	if not canPickup(player) then
 		return
 	end
 
-	if isCharacterInRegion(part, character) then
-		WoodCarryService.pickup(player)
-	end
+	lastPickupAt[player] = now
+	WoodCarryService.pickupByCategory(player, false, requestedByCategory)
 end
 
 function WoodCarryService.start()
@@ -148,13 +184,9 @@ function WoodCarryService.start()
 	end
 	started = true
 
-	task.spawn(function()
-		while true do
-			task.wait(CHECK_INTERVAL)
-			for _, player in Players:GetPlayers() do
-				checkPlayer(player)
-			end
-		end
+	Network.connectEvent(RemoteEventKey.WoodPickup, onPickupRequested, Network.t.table)
+	Players.PlayerRemoving:Connect(function(player)
+		lastPickupAt[player] = nil
 	end)
 end
 

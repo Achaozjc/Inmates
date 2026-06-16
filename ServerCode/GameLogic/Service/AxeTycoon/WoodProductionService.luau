@@ -33,6 +33,9 @@ local ChestProductionService = require(ServerCode.GameLogic.Service.AxeTycoon.Ch
 local RECONCILE_INTERVAL = 1 -- 每秒同步斧子集合
 -- 砍木动画比实际产木提前的秒数（客户端 produceAnim / produce 分两阶段）
 local PRODUCE_ANIM_LEAD = 1.3
+-- 木头产出后物理滚落到堆叠区所需的大致时长（秒）：此延迟内该件不计入自动收集，
+-- 保证「落入堆叠区后」才被自动收集通行证收走，避免刚产出还在飞行就被收走
+local WOOD_LAND_DELAY = 6
 
 type Producer = {
 	timer: TimerSystem.Timer,
@@ -105,8 +108,8 @@ local function onComplete(model: Model)
 		return
 	end
 
-	-- 产 1 件木头到堆叠区；满仓返回 0
-	local added = TycoonState.addGroundWood(producer.userId, producer.woodCategory, 1)
+	-- 产 1 件木头到堆叠区；满仓返回 0。带落地延迟，到点后才计入自动收集
+	local added = TycoonState.addGroundWood(producer.userId, producer.woodCategory, 1, WOOD_LAND_DELAY)
 	if added > 0 then
 		-- 仅通知基地主人：该斧子产出一件木头（动画已在 produceAnim 中提前播放）
 		local owner = Players:GetPlayerByUserId(producer.userId)

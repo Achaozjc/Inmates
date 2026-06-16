@@ -27,7 +27,7 @@ end
 
 function ProcessorUpgradeConfig.getUpgradeCost(upgradeCount: number): number
 	local count = math.max(0, math.floor(upgradeCount))
-	return math.floor(6 * (1.36 ^ count))
+	return math.floor(6 * (1.33 ^ count))
 end
 
 return ProcessorUpgradeConfig

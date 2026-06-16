@@ -24,6 +24,8 @@ local RemoteEventKey = {
 	GlobalMessageCommand = "GlobalMessageCommand" :: "GlobalMessageCommand",
 	-- 斧头大亨：服务端→客户端同步（生产事件/堆叠数量/木料倍率等）
 	AxeTycoonSync = "AxeTycoonSync" :: "AxeTycoonSync",
+	-- 木料：客户端检测到身边有木头 → 服务端按范围内各木种件数收取（参数：{ [category] = count }）
+	WoodPickup = "WoodPickup" :: "WoodPickup",
 	-- 宝箱：客户端→服务端（捡起/开启/丢弃），及服务端→客户端结果回执
 	ChestPickup = "ChestPickup" :: "ChestPickup",
 	ChestOpen = "ChestOpen" :: "ChestOpen",
