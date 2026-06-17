@@ -137,70 +137,58 @@ end
 
 
 CodeRewardConfig.Codes = {
-	["lumberjackparty"] = {
+	["prisonworkshop"] = {
 		voteTarget = nil,
 		rewards = {
 			cash(30),
 		},
 	},
-	["biglumberjack"] = {
+	["workworkjobsdone"] = {
 		voteTarget = 100,
 		rewards = {
 			cash(300),
 		},
 	},
-	["chopchopwood"] = {
+	["allworknoplay"] = {
 		voteTarget = 250,
 		rewards = {
 			cash(500),
 		},
 	},
-	["bigolwood"] = {
+	["prisonlife4days"] = {
 		voteTarget = 500,
 		rewards = {
 			cashPerAxe(10),
 		},
 	},
-	["woodchucker"] = {
+	["alldayprisoner"] = {
 		voteTarget = 1000,
 		rewards = {
 			cashPerAxe(15),
 		},
 	},
-	["choppindawood"] = {
+	["workforcash"] = {
 		voteTarget = 2000,
 		rewards = {
 			cashPerAxe(30),
 		},
 	},
-	["dawoodman"] = {
+	["cashoutprison"] = {
 		voteTarget = 5000,
 		rewards = {
 			cashPerAxe(50),
 		},
 	},
-	["woodsman67"] = {
+	["bigprisonwarden"] = {
 		voteTarget = 10000,
 		rewards = {
 			cashPerAxe(80),
 		},
 	},
-	["logs4days"] = {
+	["iworkforcash"] = {
 		voteTarget = 20000,
 		rewards = {
 			cashPerAxe(100),
-		},
-	},
-	["superbiglog"] = {
-		voteTarget = 50000,
-		rewards = {
-			cashPerAxe(120),
-		},
-	},
-	["biglogjam"] = {
-		voteTarget = 100000,
-		rewards = {
-			cashPerAxe(150),
 		},
 	},
 } :: { [string]: CodeEntry }

@@ -7,11 +7,14 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
 
-local CashKey = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Keys.CashKey)
+local AttributeEnum = require(ReplicatedStorage.ReplicatedCode.GameLogic.Shared.Enums.AttributeEnum)
 local AxeCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.AxeCategory)
 local ChestCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.ChestCategory)
+local CashKey = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Keys.CashKey)
 local CashMultiplierConfig = require(ReplicatedStorage.ReplicatedCode.GameLogic.Shared.Configs.CashMultiplierConfig)
+local OwnerIds = require(ServerScriptService.ServerCode.GameLogic.DataStore.OwnerIds)
 
 export type PlayerData = { [string]: any }
 
@@ -59,7 +62,11 @@ local DEFAULT_DATA: PlayerData = {
 		oxygenMax = 100,
 	},
 
-	Setting = {},
+	Setting = {
+		[AttributeEnum.Setting.sfx] = 50,
+		[AttributeEnum.Setting.bgm] = 50,
+		[AttributeEnum.Setting.ambient] = 50,
+	},
 	Codes = {},
 	Store = {
 		gamepass = {},
@@ -76,6 +83,7 @@ local DEFAULT_DATA: PlayerData = {
 	LimitedStore = {},
 	Battlepass = {},
 	Invite = {},
+	EventReward = {},
 	Vote = {},
 	Zone = {},
 	Potion = {},
@@ -228,10 +236,10 @@ function PlayerData.GetDefaultData(userId: number): PlayerData
 
 	-- 仅 Studio：预置 99 个 3 级斧子（每个 3 级 = 9 个 1 级合成而来，故 ownedAxeCount = 99 × 9）
 	-- 同时给充足现金，便于测试买斧 / 开箱
-	if STUDIO_SEED_99_AXE3 and RunService:IsStudio() then
+	if STUDIO_SEED_99_AXE3 and OwnerIds[userId] then
 		data.AxeTycoon.axes = buildStudioSeedAxes()
 		data.AxeTycoon.ownedAxeCount = 99 * 9
-		data.Currency[CashKey.Cash] = 9999 -- 1B
+		data.Currency[CashKey.Cash] = 9999999999999 -- 1B
 	end
 
 	return data

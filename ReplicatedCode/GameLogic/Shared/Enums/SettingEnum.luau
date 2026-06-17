@@ -8,15 +8,15 @@ local SettingEnum = {
 	Audio = {
 		[AttributeEnum.Setting.bgm] = {
 			name = "Music",
-			default = 100,
+			default = 50,
 		},
 		[AttributeEnum.Setting.sfx] = {
 			name = "SFX",
-			default = 100,
+			default = 50,
 		},
 		[AttributeEnum.Setting.ambient] = {
 			name = "Ambient",
-			default = 100,
+			default = 50,
 		},
 	},
 

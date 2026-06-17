@@ -125,6 +125,9 @@ end
 function client.start()
 	initializeInputContexts()
 
+	local VolumeManager = require(Framework.Managers.VolumeManager)
+	VolumeManager.start()
+
 	local componentsFolder = GameLogic:FindFirstChild("Components")
 	if componentsFolder and componentsFolder:IsA("Folder") then
 		Binder.initialize(componentsFolder)

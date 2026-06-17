@@ -27,7 +27,8 @@ local started = false
 local function rollMultiplier(): number
 	local minValue = WoodMultiplierConfig.MIN
 	local maxValue = WoodMultiplierConfig.MAX
-	return minValue + (maxValue - minValue) * math.random()
+	local raw = minValue + (maxValue - minValue) * math.random()
+	return WoodMultiplierConfig.quantize(raw)
 end
 
 local function buildSyncPayload(): { kind: string, multiplier: number, nextRefreshAt: number }

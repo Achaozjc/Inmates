@@ -19,8 +19,12 @@ local PlayerService = require(ServerScriptService.ServerCode.GameLogic.Service.S
 local RemoteFunctionKey = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Keys.RemoteFunctionKey)
 local RemoteEventKey = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Keys.RemoteEventKey)
 local PlayerDataKey = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Keys.PlayerDataKey)
+local CashKey = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Keys.CashKey)
 local TriggerSignalCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.TriggerSignalCategory)
+local NotifyCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.NotifyCategory)
+local RichTextCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.RichTextCategory)
 local TransactionEnum = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Enums.TransactionEnum)
+local ShowUnitNum = require(ReplicatedStorage.ReplicatedCode.Framework.UI.ShowUnitNum)
 
 local CodeService = {}
 
@@ -33,6 +37,31 @@ end
 local function getOwnedAxeCount(player: Player): number
 	local axeData = PlayerDataServer.getValue(player, PlayerDataKey.AxeTycoon)
 	return if type(axeData) == "table" then (tonumber(axeData.ownedAxeCount) or 0) else 0
+end
+
+local function formatRedeemNotifyMessage(rewards: { any }): string
+	local parts: { string } = {}
+	for _, reward in ipairs(rewards) do
+		local value = tonumber(reward.value) or 0
+		if value <= 0 then
+			continue
+		end
+
+		if reward.category == PlayerDataKey.Currency and reward.itemKey == CashKey.Cash then
+			table.insert(parts, string.format(RichTextCategory.cash, ShowUnitNum(value)))
+		elseif reward.category == PlayerDataKey.Items then
+			table.insert(parts, string.format("%s x%d", tostring(reward.itemKey), value))
+		end
+	end
+
+	if #parts > 0 then
+		return "Code redeemed! " .. table.concat(parts, ", ")
+	end
+	return "Code redeemed successfully!"
+end
+
+local function notifyRedeemSuccess(player: Player, message: string)
+	Network.fireClient(RemoteEventKey.Unreliable_ServerNotify, player, message, NotifyCategory.Success)
 end
 
 local function checkCooldown(player: Player, key: string, seconds: number): boolean
@@ -115,8 +144,11 @@ local function handleRedeem(player: Player, code: any): (boolean, string)
 
 	PlayerService.getRewards(player, resolvedRewards, TransactionEnum.Code, code)
 
+	local notifyMessage = formatRedeemNotifyMessage(resolvedRewards)
+	notifyRedeemSuccess(player, notifyMessage)
+
 	print(string.format("[CodeService] %s redeemed code=%s", player.Name, code))
-	return true, "Success"
+	return true, notifyMessage
 end
 
 function CodeService.start()

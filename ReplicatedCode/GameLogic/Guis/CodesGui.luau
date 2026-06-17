@@ -87,7 +87,6 @@ local function onRedeem()
 
 		if success then
 			textBox.Text = ""
-			notify(tostring(message), NotifyCategory.Success)
 		else
 			notify(tostring(message), NotifyCategory.Error)
 		end

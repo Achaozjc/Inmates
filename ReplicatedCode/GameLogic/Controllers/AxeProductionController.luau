@@ -67,8 +67,8 @@ local function resolveAnimModel(axe: Model): Model?
 	return axe
 end
 -- 砍木音效（随 axe_action 动画播放，挂在斧子部件上形成 3D 空间音效）
-local CHOP_SOUND_ID = "rbxassetid://9113801512"
-local CHOP_SOUND_VOLUME = 3
+local CHOP_SOUND_ID = "rbxassetid://500472891"
+local CHOP_SOUND_VOLUME = 0.5
 -- 动画里标记「斧子劈中木头瞬间」的关键帧事件名（在动画编辑器中添加），
 -- 播放到该标记时触发砍木音效、斧刃粒子与 ProduceVFX
 local CHOP_MARKER_NAME = "Event"
@@ -90,7 +90,11 @@ local WOOD_FALLBACK_TIME = 16
 local WOOD_ARRIVAL_DISTANCE = 4
 -- 客户端检测身边木头的间隔与范围（与服务端 WoodCarryService 去抖一致）
 local PICKUP_CHECK_INTERVAL = 0.25
-local PICKUP_DETECTION_BOX_SIZE = Vector3.new(6, 6, 6)
+-- 近邻拾取：水平半径 / 垂直半高（检测中心取 HRP 与脚底的中点，兼容不同身高）
+local PICKUP_HORIZONTAL_RADIUS = 8
+local PICKUP_VERTICAL_HALF = 10
+-- 站在堆叠区内时，所有已落地物品均可拾取（无需 PrimaryPart 进入近邻盒）
+local STACKING_ZONE_PICKUP_RADIUS = 14
 -- 木材生成位置：斧子前方的单位数（沿斧子朝向），落到轨道上
 local WOOD_SPAWN_FORWARD = 8
 
@@ -431,33 +435,26 @@ local function findMyBase(): Instance?
 	return nil
 end
 
-local function isPartNearPlayer(part: BasePart, rootPart: BasePart): boolean
-	local overlapParams = OverlapParams.new()
-	overlapParams.FilterType = Enum.RaycastFilterType.Include
-	overlapParams.FilterDescendantsInstances = { part }
-	local found = Workspace:GetPartBoundsInBox(CFrame.new(rootPart.Position), PICKUP_DETECTION_BOX_SIZE, overlapParams)
-	return #found > 0
+local function getStackingAnchorPart(base: Instance): BasePart?
+	local axeMachine = base:FindFirstChild("InmateMachine")
+	local anchorPart = axeMachine and axeMachine:FindFirstChild(STACKING_ANCHOR_NAME)
+	return if anchorPart and anchorPart:IsA("BasePart") then anchorPart else nil
 end
 
--- 按服务端 taken 明细，只销毁本次请求时记录在范围内的木头模型
-local function removePendingWoodVisuals(taken: { [string]: number })
-	for category, count in taken do
-		local remaining = math.floor(tonumber(count) or 0)
-		if remaining <= 0 then
-			continue
-		end
-		for index = #pendingPickupWoods, 1, -1 do
-			if remaining <= 0 then
-				break
-			end
-			local entry = pendingPickupWoods[index]
-			if entry.category == category and entry.model.Parent then
-				entry.model:Destroy()
-				table.remove(pendingPickupWoods, index)
-				remaining -= 1
-			end
-		end
+local function isPlayerInStackingZone(rootPart: BasePart, base: Instance): boolean
+	local anchorPart = getStackingAnchorPart(base)
+	if not anchorPart then
+		return false
 	end
+	return (rootPart.Position - anchorPart.Position).Magnitude <= STACKING_ZONE_PICKUP_RADIUS
+end
+
+-- 拾取检测中心：HRP 与角色 bounding box 脚底的中点，减轻身高差异影响
+local function getPickupDetectionCenter(character: Model, rootPart: BasePart): Vector3
+	local bboxCFrame, bboxSize = character:GetBoundingBox()
+	local footY = bboxCFrame.Position.Y - bboxSize.Y * 0.5
+	local centerY = (rootPart.Position.Y + footY) * 0.5
+	return Vector3.new(rootPart.Position.X, centerY, rootPart.Position.Z)
 end
 
 -- 木头是否已落入堆叠区（Parent 为 WoodPile 文件夹）；未落地的仍在 Workspace 飞行
@@ -466,60 +463,151 @@ local function isWoodLanded(wood: Model): boolean
 	return parent ~= nil and parent.Name == WOOD_PILE_FOLDER_NAME
 end
 
--- 自动收集（无近接记录）时，按服务端 taken 明细直接从基地木堆销毁对应数量的模型
--- 优先销毁「已落地」的木头（与服务端只收成熟木头一致），不足时再用未落地的补足，避免残留幽灵
-local function removeWoodVisualsFromBase(base: Instance, taken: { [string]: number })
+local function isPartNearPlayer(part: BasePart, character: Model, rootPart: BasePart): boolean
+	local center = getPickupDetectionCenter(character, rootPart)
+	local delta = part.Position - center
+	return math.abs(delta.X) <= PICKUP_HORIZONTAL_RADIUS
+		and math.abs(delta.Y) <= PICKUP_VERTICAL_HALF
+		and math.abs(delta.Z) <= PICKUP_HORIZONTAL_RADIUS
+end
+
+-- 按服务端 taken 明细销毁模型；优先 preferModels，不足时从基地全桶按落地→飞行→任意补足
+local function removeWoodVisualsByTaken(
+	base: Instance,
+	taken: { [string]: number },
+	preferModels: { [Model]: true }?
+)
 	local bucket = activeWoodByBase[base]
 	if not bucket then
 		return
 	end
+
 	local toRemove: { Model } = {}
+	local toRemoveSet: { [Model]: true } = {}
+
+	local function markForDestroy(wood: Model)
+		if not toRemoveSet[wood] then
+			toRemoveSet[wood] = true
+			table.insert(toRemove, wood)
+		end
+	end
+
 	for category, count in taken do
 		local remaining = math.floor(tonumber(count) or 0)
 		if remaining <= 0 then
 			continue
 		end
-		-- 第一遍：已落地的
-		for wood, woodCategory in bucket do
-			if remaining <= 0 then
-				break
-			end
-			if woodCategory == category and wood.Parent and isWoodLanded(wood) then
-				table.insert(toRemove, wood)
-				remaining -= 1
+		if preferModels then
+			for wood, woodCategory in bucket do
+				if remaining <= 0 then
+					break
+				end
+				if preferModels[wood] and woodCategory == category and wood.Parent then
+					markForDestroy(wood)
+					remaining -= 1
+				end
 			end
 		end
-		-- 第二遍：仍在飞行的补足，保证删够 taken 件
 		if remaining > 0 then
 			for wood, woodCategory in bucket do
 				if remaining <= 0 then
 					break
 				end
-				if woodCategory == category and wood.Parent and not isWoodLanded(wood) then
-					table.insert(toRemove, wood)
+				if not toRemoveSet[wood] and woodCategory == category and wood.Parent and isWoodLanded(wood) then
+					markForDestroy(wood)
+					remaining -= 1
+				end
+			end
+		end
+		if remaining > 0 then
+			for wood, woodCategory in bucket do
+				if remaining <= 0 then
+					break
+				end
+				if not toRemoveSet[wood] and woodCategory == category and wood.Parent and not isWoodLanded(wood) then
+					markForDestroy(wood)
+					remaining -= 1
+				end
+			end
+		end
+		if remaining > 0 then
+			for wood, woodCategory in bucket do
+				if remaining <= 0 then
+					break
+				end
+				if not toRemoveSet[wood] and woodCategory == category and wood.Parent then
+					markForDestroy(wood)
 					remaining -= 1
 				end
 			end
 		end
 	end
+
 	for _, wood in toRemove do
 		wood:Destroy()
 	end
 end
 
+-- 服务端 groundTotal 对账：本地视觉数量超出权威库存时清理多余模型（幽灵物品）
+local function reconcileWoodVisualCount(base: Instance, groundTotal: number)
+	local bucket = activeWoodByBase[base]
+	if not bucket then
+		return
+	end
+	groundTotal = math.max(0, math.floor(groundTotal))
+
+	local allWoods: { Model } = {}
+	for wood in bucket do
+		if wood.Parent then
+			table.insert(allWoods, wood)
+		end
+	end
+
+	local excess = #allWoods - groundTotal
+	if excess <= 0 then
+		return
+	end
+
+	-- 优先清理未落地 / 非网格模型，保留已落位的静态堆叠
+	table.sort(allWoods, function(a, b)
+		local aLanded = isWoodLanded(a)
+		local bLanded = isWoodLanded(b)
+		if aLanded ~= bLanded then
+			return not aLanded
+		end
+		return false
+	end)
+
+	for i = 1, excess do
+		local wood = allWoods[i]
+		if wood and wood.Parent then
+			wood:Destroy()
+		end
+	end
+end
+
 local function scanWoodInRange(
+	character: Model,
 	rootPart: BasePart,
+	base: Instance,
 	bucket: { [Model]: string }
 ): ({ [string]: number }, { PendingPickupWood })
 	local byCategory: { [string]: number } = {}
 	local inRangeEntries: { PendingPickupWood } = {}
+	local inStackingZone = isPlayerInStackingZone(rootPart, base)
 
 	for wood, category in bucket do
 		if not wood.Parent then
 			continue
 		end
-		local part = wood.PrimaryPart or wood:FindFirstChildWhichIsA("BasePart")
-		if part and isPartNearPlayer(part, rootPart) then
+		local inRange = false
+		if inStackingZone and isWoodLanded(wood) then
+			inRange = true
+		else
+			local part = wood.PrimaryPart or wood:FindFirstChildWhichIsA("BasePart")
+			inRange = part ~= nil and isPartNearPlayer(part, character, rootPart)
+		end
+		if inRange then
 			byCategory[category] = (byCategory[category] or 0) + 1
 			table.insert(inRangeEntries, { model = wood, category = category })
 		end
@@ -556,7 +644,7 @@ local function tryRequestWoodPickup()
 		return
 	end
 
-	local byCategory, inRangeEntries = scanWoodInRange(rootPart, bucket)
+	local byCategory, inRangeEntries = scanWoodInRange(character, rootPart, base, bucket)
 	if next(byCategory) == nil then
 		return
 	end
@@ -650,11 +738,7 @@ local function getChopSound(axe: Model): Sound?
 	sound.SoundId = CHOP_SOUND_ID
 	sound.Volume = CHOP_SOUND_VOLUME
 	sound.RollOffMaxDistance = CHOP_SOUND_MAX_DISTANCE
-	-- 归入 SFX 分组，统一受音效音量控制
-	local sfxGroup = SoundService:FindFirstChild("SFX")
-	if sfxGroup and sfxGroup:IsA("SoundGroup") then
-		sound.SoundGroup = sfxGroup
-	end
+	sound.SoundGroup = SoundService.SFX
 	sound.Parent = part
 	soundByAxe[axe] = sound
 
@@ -846,24 +930,33 @@ function AxeProductionController:init()
 				onProduce(payload.axe, payload.wood)
 			end
 		elseif payload.kind == "pickup" and typeof(payload.base) == "Instance" then
-			local taken = if type(payload.taken) == "table" then payload.taken else nil
-			if taken then
-				if payload.silent then
-					-- 自动收集：无近接记录，直接从基地木堆按明细销毁
-					removeWoodVisualsFromBase(payload.base, taken)
-				else
-					removePendingWoodVisuals(taken)
+			local taken = if type(payload.taken) == "table" then payload.taken else {}
+			local groundTotal = if type(payload.groundTotal) == "number" then payload.groundTotal else nil
+
+			local preferSet: { [Model]: true } = {}
+			if not payload.silent then
+				for _, entry in pendingPickupWoods do
+					preferSet[entry.model] = true
 				end
 			end
+
+			if next(taken) ~= nil then
+				removeWoodVisualsByTaken(payload.base, taken, if next(preferSet) then preferSet else nil)
+			end
+			if groundTotal ~= nil then
+				reconcileWoodVisualCount(payload.base, groundTotal)
+			end
+			table.clear(pendingPickupWoods)
+
 			-- 本地玩家自己拾取时，在 HUD WoodAmount 上方弹出拾取飘字（明细由服务端随广播下发）
 			-- silent 为 true（如自动收集通行证）时只清理模型、不弹飘字
 			if
 				not payload.silent
-				and type(payload.taken) == "table"
+				and next(taken) ~= nil
 				and payload.base:GetAttribute(AttributeEnum.OwnerId) == localPlayer.UserId
 			then
 				SoundService.SFX.TryOnAdd:Play()
-				WoodPickupPopup.show(payload.taken)
+				WoodPickupPopup.show(taken)
 			end
 		end
 	end, Network.t.table)

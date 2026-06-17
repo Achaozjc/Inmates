@@ -4,7 +4,7 @@
 	处理机服务（服务端权威）——「处理换钱」核心链路。
 
 	1. deposit：玩家触碰自己基地 Storage，将背负木头卸入处理机；
-	   存入量 = WoodConfig 加权价值 × 全服木料倍率后向上取整（仅入库时换算，如 3 Wood × 0.5 → 2），
+	   存入量 = WoodConfig 加权价值 × 全服木料倍率后向上取整（仅入库时换算，如 3 Wood × 1.2 → 4），
 	   写入 processorStock 后清空 carrying（背负全部卸下，按倍率折算入库量）。
 	2. 每秒结算：按 ProcessorUpgradeConfig.getRate 从 processorStock 取出等量，
 	   转入 Currency.PendingCash（1 库存单位 = 1 待收现金，与 WoodConfig.value 一致）。
@@ -193,7 +193,7 @@ end
 local function notifyDeposit(player: Player, info: DepositInfo)
 	local depositStr = ShowUnitNum(info.depositAmount)
 	local bonusStr = if info.bonus >= 0 then "+" .. ShowUnitNum(info.bonus) else ShowUnitNum(info.bonus)
-	local multiplierStr = string.format("×%.2f", info.multiplier)
+	local multiplierStr = WoodMultiplierConfig.formatNotify(info.multiplier)
 	-- 通行证倍率仅在拥有（> 1）时展示，如 [x2]
 	local gamepassStr = if info.gamepassMultiplier > 1 then string.format(" [x%g]", info.gamepassMultiplier) else ""
 	local message = string.format("Deposited %s (%s) Items [%s]%s!", depositStr, bonusStr, multiplierStr, gamepassStr)

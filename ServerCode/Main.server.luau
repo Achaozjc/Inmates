@@ -95,6 +95,7 @@ startService("ServerBoostService", getModule(GameLogic, "Service", "ServerBoostS
 startService("VoteService", getModule(GameLogic, "Service", "Sync", "VoteService"))
 CodeDataServer.start()
 startService("CodeService", getModule(GameLogic, "Service", "Sync", "CodeService"))
+startLoadedService("EventService", require(getModule(GameLogic, "Service", "Sync", "EventService")))
 startService("BaseAssignmentService", getModule(GameLogic, "Service", "AxeTycoon", "BaseAssignmentService"))
 startService("AxeService", getModule(GameLogic, "Service", "AxeTycoon", "AxeService"))
 startService("ChestProductionService", getModule(GameLogic, "Service", "AxeTycoon", "ChestProductionService"))
@@ -110,6 +111,7 @@ startService("GamepassService", getModule(GameLogic, "Service", "AxeTycoon", "Ga
 startService("GroupRewardService", getModule(GameLogic, "Service", "AxeTycoon", "GroupRewardService"))
 startService("OfflineWoodService", getModule(GameLogic, "Service", "AxeTycoon", "OfflineWoodService"))
 startService("TutorialService", getModule(GameLogic, "Service", "AxeTycoon", "TutorialService"))
+startService("CharacterTagService", getModule(GameLogic, "Service", "CharacterTagService"))
 startServerComponents()
 
 safePlayerAdded(onPlayerAdded)

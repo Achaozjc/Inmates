@@ -32,6 +32,10 @@ type RewardItem = {
 
 local friendLuckDebounce: { [Player]: number } = {}
 local FRIEND_LUCK_COOLDOWN = 10
+-- 每位同服好友 +10% Cash，倍率 clamp 到 [1, 1.5]（移植自 Spicy PlayerBoostServer）
+local FRIEND_BOOST_PER_FRIEND = 0.1
+local FRIEND_BOOST_MIN = 1
+local FRIEND_BOOST_MAX = 1.5
 local ONLINE_INCREMENT_SECONDS = 60
 
 local function ensureTable(value: any): { [any]: any }
@@ -302,22 +306,22 @@ local function updateFriendLuck(player: Player)
 			return
 		end
 
-		local friendBonus = 0
+		local boost = FRIEND_BOOST_MIN
 		for _, otherPlayer in ipairs(Players:GetPlayers()) do
 			if otherPlayer == player then
 				continue
 			end
 
 			local success, isFriend = pcall(function()
-				return otherPlayer:IsFriendsWithAsync(player.UserId)
+				return player:IsFriendsWith(otherPlayer.UserId)
 			end)
 			if success and isFriend then
-				friendBonus += 0.1
+				boost += FRIEND_BOOST_PER_FRIEND
 			end
 		end
 
 		if player.Parent then
-			player:SetAttribute(AttributeEnum.FriendLuck, math.clamp(friendBonus, 0, 1.5))
+			player:SetAttribute(AttributeEnum.FriendLuck, math.clamp(boost, FRIEND_BOOST_MIN, FRIEND_BOOST_MAX))
 		end
 	end)
 end
@@ -347,6 +351,11 @@ end
 
 function PlayerService.getStatistic(player: Player, statisticKey: string): number
 	return StatisticManager.get(player, StatisticTypeCategory.all, statisticKey) or 0
+end
+
+-- 好友同服 Cash 加成倍率（1 = 无加成，由 updateFriendLuck 写入 _friendLuck）
+function PlayerService.getFriendBoostMultiplier(player: Player): number
+	return (player:GetAttribute(AttributeEnum.FriendLuck) :: number?) or FRIEND_BOOST_MIN
 end
 
 function PlayerService.listen()

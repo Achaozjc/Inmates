@@ -11,6 +11,7 @@ local RemoteFunctionKey = {
 	GetLeaderboard = "GetLeaderboard" :: "GetLeaderboard",
 	Code_GetReleased = "Code_GetReleased" :: "Code_GetReleased",
 	Code_Redeem = "Code_Redeem" :: "Code_Redeem",
+	GetEventRewards = "GetEventRewards" :: "GetEventRewards",
 }
 
 return RemoteFunctionKey

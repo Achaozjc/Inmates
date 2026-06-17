@@ -10,6 +10,7 @@ local UILayerId = {
 	GUI_Codes = "GUI_Codes",
 	GUI_LikesCodes = "GUI_LikesCodes",
 	GUI_Setting = "GUI_Setting",
+	Gui_Event = "Gui_Event" :: "Gui_Event",
 }
 
 return UILayerId

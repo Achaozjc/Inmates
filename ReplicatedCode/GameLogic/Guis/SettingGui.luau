@@ -6,7 +6,6 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SoundService = game:GetService("SoundService")
 local UserInputService = game:GetService("UserInputService")
 
 local Framework = ReplicatedStorage.ReplicatedCode.Framework
@@ -45,19 +44,9 @@ local function findByPath(root: Instance, path: string): Instance?
 	return node
 end
 
-local function applyBgmGroupVolume(fraction: number)
-	local bgm = SoundService:FindFirstChild("bgm")
-	if bgm and bgm:IsA("SoundGroup") then
-		bgm.Volume = fraction
-	end
-end
-
 local function applyAudioVolume(settingKey: string, percent: number)
 	local fraction = math.clamp(percent, 0, 100) / 100
 	VolumeManager.set(settingKey, fraction)
-	if settingKey == AttributeEnum.Setting.bgm then
-		applyBgmGroupVolume(fraction)
-	end
 end
 
 local function setupSlider(
@@ -67,7 +56,7 @@ local function setupSlider(
 	settingKey: string?
 )
 	local dragging = false
-	local currentPercent = 100
+	local currentPercent = 50
 
 	local function applyPercent(percent: number)
 		percent = math.clamp(percent, 0, 100)
@@ -140,7 +129,7 @@ local function setupSlider(
 
 	local function applySaved(setting: { [string]: any }?)
 		local saved = settingKey and setting and setting[settingKey]
-		local percent = if typeof(saved) == "number" then saved else 100
+		local percent = if typeof(saved) == "number" then saved else 50
 		applyPercent(percent)
 	end
 

@@ -8,7 +8,7 @@
 	客户端只销毁请求时记录的范围内模型，避免误删传送带上未进入范围的木头。
 
 	堆叠区数据在 TycoonState（内存）；carrying 持久化在 PlayerData，掉线不丢。
-	成功后广播 AxeTycoonSync { kind = "pickup" }，供客户端移除对应木头视觉并弹出 UI 飘字。
+	成功后广播 AxeTycoonSync { kind = "pickup", groundTotal }，供客户端移除视觉、对账清理幽灵模型并弹出 UI 飘字。
 ]]
 
 local Players = game:GetService("Players")
@@ -83,6 +83,22 @@ local function sanitizePickupRequest(requested: any): { [string]: number }?
 	return sanitized
 end
 
+-- 下发拾取结果；groundTotal 供客户端与本地视觉数量对账，清理幽灵模型
+local function firePickupSync(
+	player: Player,
+	base: Folder,
+	taken: { [string]: number },
+	silent: boolean?
+)
+	Network.fireClient(RemoteEventKey.AxeTycoonSync, player, {
+		kind = "pickup",
+		base = base,
+		taken = taken,
+		groundTotal = TycoonState.getGroundTotal(player.UserId),
+		silent = silent,
+	})
+end
+
 -- 按木种从堆叠区背走（与客户端范围内检测结果对应）
 function WoodCarryService.pickupByCategory(player: Player, silent: boolean?, byCategory: { [string]: number })
 	local sanitized = sanitizePickupRequest(byCategory)
@@ -95,8 +111,14 @@ function WoodCarryService.pickupByCategory(player: Player, silent: boolean?, byC
 		return
 	end
 
+	local base = BaseAssignmentService.getBase(player)
+	if not base then
+		return
+	end
+
 	local taken = TycoonState.takeGroundWoodByCategory(player.UserId, sanitized)
 	if next(taken) == nil then
+		firePickupSync(player, base, {}, silent)
 		return
 	end
 
@@ -108,16 +130,7 @@ function WoodCarryService.pickupByCategory(player: Player, silent: boolean?, byC
 		return data
 	end)
 	DebouncedPlayerSave.schedule(player)
-
-	local base = BaseAssignmentService.getBase(player)
-	if base then
-		Network.fireClient(RemoteEventKey.AxeTycoonSync, player, {
-			kind = "pickup",
-			base = base,
-			taken = taken,
-			silent = silent,
-		})
-	end
+	firePickupSync(player, base, taken, silent)
 end
 
 -- 从堆叠区背走 count 件木头（按库存字典序扣减，供通行证等批量收取）
@@ -155,12 +168,7 @@ function WoodCarryService.pickup(player: Player, silent: boolean?, count: number
 
 	local base = BaseAssignmentService.getBase(player)
 	if base then
-		Network.fireClient(RemoteEventKey.AxeTycoonSync, player, {
-			kind = "pickup",
-			base = base,
-			taken = taken,
-			silent = silent,
-		})
+		firePickupSync(player, base, taken, silent)
 	end
 end
 
@@ -170,12 +178,26 @@ local function onPickupRequested(player: Player, requestedByCategory: { [string]
 	if now - lastAt < CHECK_INTERVAL then
 		return
 	end
+
+	local sanitized = sanitizePickupRequest(requestedByCategory)
+	if not sanitized then
+		return
+	end
+
 	if not canPickup(player) then
+		-- 服务端已无库存但客户端可能残留幽灵模型，静默对账
+		if TycoonState.getGroundTotal(player.UserId) <= 0 then
+			lastPickupAt[player] = now
+			local base = BaseAssignmentService.getBase(player)
+			if base then
+				firePickupSync(player, base, {}, true)
+			end
+		end
 		return
 	end
 
 	lastPickupAt[player] = now
-	WoodCarryService.pickupByCategory(player, false, requestedByCategory)
+	WoodCarryService.pickupByCategory(player, false, sanitized)
 end
 
 function WoodCarryService.start()

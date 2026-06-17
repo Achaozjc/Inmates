@@ -17,6 +17,7 @@ local PlayerDataKey = {
 	LimitedStore = "LimitedStore" :: "LimitedStore",
 	Battlepass = "Battlepass" :: "Battlepass",
 	Invite = "Invite" :: "Invite",
+	EventReward = "EventReward" :: "EventReward",
 	Vote = "Vote" :: "Vote",
 	Zone = "Zone" :: "Zone",
 	Potion = "Potion" :: "Potion",

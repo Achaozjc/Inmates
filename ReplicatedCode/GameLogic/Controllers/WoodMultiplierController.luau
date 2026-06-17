@@ -8,7 +8,7 @@
 	   克隆到本地 PlayerGui，并把 Adornee 指向自己基地的 WoodMultiplier/Screen 部件。
 	2. 刷新 Main 下的显示：
 	   - Top.Value：当前倍率，如 "1.2x"
-	   - Bar.Handle：右对齐固定，仅调整 Size.X.Scale 表示反向进度（0.5x ~ 1.5x）
+	   - Bar.Handle：右对齐固定，仅调整 Size.X.Scale 表示反向进度（1.0x ~ 1.5x）
 	   - Bottom.CountDown：距离下次刷新秒数，如 "30s"
 
 	状态来源：服务端写在 Workspace 上的属性（晚加入兜底）+ AxeTycoonSync 远程事件（实时推送）。

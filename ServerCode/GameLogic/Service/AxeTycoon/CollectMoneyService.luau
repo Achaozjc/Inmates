@@ -83,8 +83,10 @@ function CollectMoneyService.collect(player: Player): boolean
 		return false
 	end
 
-	-- Cash 倍率在领取时统一结算：实得现金 = floor(待收金额 × 当前倍率)（未购买为 1）
-	local payout = math.floor(pending * CashMultiplierService.getMultiplier(player))
+	-- Cash 倍率 + 好友同服加成在领取时统一结算（未购买/无好友均为 1）
+	local payout = math.floor(
+		pending * CashMultiplierService.getMultiplier(player) * PlayerService.getFriendBoostMultiplier(player)
+	)
 	PlayerService.addCash(player, CashKey.Cash, payout, TransactionEnum.Gameplay, "collect")
 	CollectMoneyService.updateBillboard(player)
 	DebouncedPlayerSave.schedule(player)

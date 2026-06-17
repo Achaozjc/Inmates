@@ -22,6 +22,7 @@ local WoodPickupPopup = require(GameLogic.Modules.WoodPickupPopup)
 local BaseConfig = require(GameLogic.Shared.Configs.BaseConfig)
 local CashMultiplierConfig = require(GameLogic.Shared.Configs.CashMultiplierConfig)
 local CashGrantConfig = require(GameLogic.Shared.Configs.CashGrantConfig)
+local SocialManager = require(GameLogic.Managers.SocialManager)
 local AttributeEnum = require(GameLogic.Shared.Enums.AttributeEnum)
 local CashKey = require(GameLogic.SharedConstants.Keys.CashKey)
 local PlayerDataKey = require(GameLogic.SharedConstants.Keys.PlayerDataKey)
@@ -53,6 +54,7 @@ local cashMultiplierButton: GuiButton? = nil
 local cashMultiplierTitle: TextLabel? = nil
 local cashMultiplierPrice: TextLabel? = nil
 local cashMultiplierLabel: TextLabel? = nil
+local friendBoostLabel: TextLabel? = nil
 local lastCashMultiplierClickAt = 0
 
 -- 付费金钱（PayCash）面板：每档一行，展示「+发放现金」并点击付费
@@ -98,7 +100,7 @@ local function bindHomeButton(gui: ScreenGui)
 	end)
 end
 
--- Right.TopButtons：Codes / Config 入口（移植自 spicy GUI_HUD）
+-- Right.TopButtons：Codes / Config / Invite / Update 入口
 local function bindTopButtons(gui: ScreenGui)
 	local right = gui:FindFirstChild("Right") :: Frame?
 	local topButtons = right and right:FindFirstChild("TopButtons") :: Frame?
@@ -128,6 +130,24 @@ local function bindTopButtons(gui: ScreenGui)
 		end)
 	else
 		warn("[HUD] 未找到 Codes 入口按钮（Right.TopButtons.Codes 等）")
+	end
+
+	local inviteBtn = topButtons:FindFirstChild("Invite")
+	if inviteBtn and inviteBtn:IsA("GuiButton") then
+		inviteBtn.Activated:Connect(function()
+			SocialManager.OpenGameInvite()
+		end)
+	else
+		warn("[HUD] 未找到 Invite 入口按钮（Right.TopButtons.Invite）")
+	end
+
+	local updateBtn = topButtons:FindFirstChild("Update")
+	if updateBtn and updateBtn:IsA("GuiButton") then
+		updateBtn.Activated:Connect(function()
+			toggleMenuLayer(UILayerId.Gui_Event)
+		end)
+	else
+		warn("[HUD] 未找到 Update 入口按钮（Right.TopButtons.Update）")
 	end
 end
 
@@ -288,6 +308,18 @@ local function refreshCashMultiplierButton()
 	end
 end
 
+-- 好友同服 Cash 加成：读取服务端写入的 _friendLuck 倍率，显示加成百分比
+local function refreshFriendBoostLabel()
+	local label = friendBoostLabel
+	if not label then
+		return
+	end
+
+	local boost = (localPlayer:GetAttribute(AttributeEnum.FriendLuck) :: number?) or 1
+	local pct = math.floor((boost - 1) * 100 + 0.5)
+	label.Text = string.format("Friend Boost: +%d%%", pct)
+end
+
 -- 刷新当前 Cash 倍率指示标签：倍率 > 1（已购买至少一档）时显示当前倍率，如 "x2 Cash"，否则隐藏
 local function refreshCashMultiplierLabel()
 	local label = cashMultiplierLabel
@@ -416,6 +448,8 @@ function HUD:start()
 	cashMultiplierTitle = button:WaitForChild("Title") :: TextLabel
 	cashMultiplierPrice = button:WaitForChild("Price") :: TextLabel
 	cashMultiplierLabel = leftInfos:WaitForChild("CashMultiplier") :: TextLabel
+	friendBoostLabel = leftInfos:WaitForChild("FriendBoost") :: TextLabel
+	friendBoostLabel.Active = true
 
 	local payCash = leftInfos:WaitForChild("PayCash") :: Frame
 	buildPayCash(payCash)
@@ -437,6 +471,7 @@ function HUD:start()
 	refreshTotalAxeLabel()
 	refreshCashMultiplierButton()
 	refreshCashMultiplierLabel()
+	refreshFriendBoostLabel()
 	refreshPayCash()
 	refreshIndexAmount()
 end
@@ -469,6 +504,17 @@ function HUD:listen()
 		refreshCashMultiplierButton()
 		refreshCashMultiplierLabel()
 	end)
+
+	localPlayer:GetAttributeChangedSignal(AttributeEnum.FriendLuck):Connect(refreshFriendBoostLabel)
+
+	local friendBoost = friendBoostLabel
+	if friendBoost then
+		friendBoost.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				SocialManager.OpenGameInvite()
+			end
+		end)
+	end
 end
 
 return HUD

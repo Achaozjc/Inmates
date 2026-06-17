@@ -7,6 +7,7 @@ local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
 local SocialService = game:GetService("SocialService")
 local GroupService = game:GetService("GroupService")
+local RunService = game:GetService("RunService")
 
 local TimeTokenCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.TimeTokenCategory)
 local NotifyCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.NotifyCategory)
@@ -42,7 +43,7 @@ local LAUNCH_DATA = {
     referrerId = localPlayer.UserId,
 }
 
--- local launchData = HttpService:JSONEncode(LAUNCH_DATA)
+InviteOptions.LaunchData = HttpService:JSONEncode(LAUNCH_DATA)
 
 function SocialManager.joinCommunity()
     -- This should be done in a script running on the client
@@ -128,7 +129,17 @@ end
 function SocialManager.OpenGameInvite()
     local canInvite = canSendGameInvite(localPlayer)
     if canInvite then
-        SocialService:PromptGameInvite(localPlayer, InviteOptions)
+        local ok, err = pcall(function()
+            SocialService:PromptGameInvite(localPlayer, InviteOptions)
+        end)
+        if not ok then
+            warn("[SocialManager] PromptGameInvite 失败：", err)
+        end
+    elseif RunService:IsStudio() then
+        NetSignals.getSignal(TriggerSignalCategory.Client.notify):Fire(
+            "Invite unavailable in Studio - test on a published client",
+            NotifyCategory.Warn
+        )
     end
 end
 
@@ -215,6 +226,22 @@ function SocialManager.getExperienceEventInfo(eventId: string): any
         info = nil,
         retryAt = os.clock() + EVENT_QUERY_FAILURE_RETRY_SECONDS,
     }
+    return nil
+end
+
+-- 弹出 Roblox 活动 RSVP 面板（EventGui Notify Me 按钮，移植自 dingdong SocialManager.followEvent）
+function SocialManager.followEvent(eventId: string): Enum.RsvpStatus?
+    local success, rsvpStatus = pcall(function()
+        return SocialService:PromptRsvpToEventAsync(eventId)
+    end)
+    if success then
+        _eventRsvpStatusCache[tostring(eventId)] = {
+            status = rsvpStatus,
+            retryAt = 0,
+            lastWarnAt = 0,
+        }
+        return rsvpStatus
+    end
     return nil
 end
 

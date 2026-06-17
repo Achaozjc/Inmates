@@ -8,7 +8,7 @@
 	RootPart 下的 Billboard 显示可领取数量；触碰后 fire OfflineWoodClaim 请求服务端领取。
 
 	领取后服务端清零 pendingOfflineWood，经 PlayerData 同步回来 → 此处移除木堆并播放
-	SFX/TryOnRemove（与 Storage 卸木入库一致）。
+	Merge 按钮同款 SFX/Whoosh + MergeVFX。
 	发放与结算逻辑见服务端 OfflineWoodService。
 ]]
 
@@ -31,12 +31,17 @@ local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("Loc
 
 local PREFAB_NAME = "OfflineWoodPile"
 local ROOT_PART_NAME = "RootPart"
+local MERGE_VFX_NAME = "MergeVFX"
+local DEFAULT_EMIT_COUNT = 15
+local VFX_CLONE_LIFETIME = 2
 -- 木堆相对 SpawnLocation 的摆放偏移（贴地、稍向前），可按美术微调
-local SPAWN_OFFSET = CFrame.new(0, 0, -8)
+local SPAWN_OFFSET = CFrame.new(8, 0, -12)
 
 local OfflineWoodPileController = {
 	Name = "OfflineWoodPileController",
 	_started = false,
+	_prefab = nil :: Model?,
+	_prefabMissingWarned = false,
 	_pile = nil :: Model?,
 	_label = nil :: TextLabel?,
 	_claiming = false, -- 已发出领取请求、等待服务端清零期间不再重复发
@@ -78,11 +83,21 @@ local function waitForMySpawn(): BasePart
 	end
 end
 
--- 获取木堆预制体（缺失返回 nil）
-local function getPrefab(): Model?
-	local instances = ReplicatedStorage:FindFirstChild("Instances")
-	local prefabs = instances and instances:FindFirstChild("Prefabs")
-	local prefab = prefabs and prefabs:FindFirstChild(PREFAB_NAME)
+-- 带超时的 WaitForChild 链式查找：刚进服时实例可能尚未复制完成
+local function waitForDescendant(root: Instance, names: { string }, timeout: number): Instance?
+	local current: Instance? = root
+	for _, name in names do
+		if not current then
+			return nil
+		end
+		current = current:WaitForChild(name, timeout)
+	end
+	return current
+end
+
+-- 解析木堆预制体（ReplicatedStorage.Instances.Prefabs.OfflineWoodPile）
+local function resolvePrefab(): Model?
+	local prefab = waitForDescendant(ReplicatedStorage, { "Instances", "Prefabs", PREFAB_NAME }, 10)
 	return if prefab and prefab:IsA("Model") then prefab else nil
 end
 
@@ -94,10 +109,50 @@ local function findBillboardLabel(pile: Model): TextLabel?
 	return if amount and amount:IsA("TextLabel") then amount else nil
 end
 
+local function getVfxFolder(): Instance?
+	local instances = ReplicatedStorage:FindFirstChild("Instances")
+	local prefabs = instances and instances:FindFirstChild("Prefabs")
+	return prefabs and prefabs:FindFirstChild("VFX")
+end
+
+-- 在指定位置播放 Merge 按钮同款 VFX（逻辑与 TouchButtonVFXController 一致）
+local function playMergeVfxAt(cframe: CFrame)
+	local vfxFolder = getVfxFolder()
+	local prefab = vfxFolder and vfxFolder:FindFirstChild(MERGE_VFX_NAME)
+	if not prefab or not prefab:IsA("BasePart") then
+		return
+	end
+
+	local clone = prefab:Clone()
+	clone.CFrame = cframe
+	clone.Parent = Workspace
+
+	for _, descendant in clone:GetDescendants() do
+		if descendant:IsA("ParticleEmitter") then
+			local emitter = descendant
+			local emitCount = tonumber(emitter:GetAttribute("EmitCount")) or DEFAULT_EMIT_COUNT
+			local emitDelay = tonumber(emitter:GetAttribute("EmitDelay")) or 0
+			if emitDelay > 0 then
+				task.delay(emitDelay, function()
+					if emitter.Parent then
+						emitter:Emit(emitCount)
+					end
+				end)
+			else
+				emitter:Emit(emitCount)
+			end
+		end
+	end
+
+	task.delay(VFX_CLONE_LIFETIME, function()
+		clone:Destroy()
+	end)
+end
+
 function OfflineWoodPileController:_updateLabel(amount: number)
 	local label = self._label
 	if label then
-		label.Text = ShowUnitNum(amount) .. " Wood"
+		label.Text = ShowUnitNum(amount) .. " Items"
 	end
 end
 
@@ -127,9 +182,11 @@ function OfflineWoodPileController:_spawnPile(amount: number)
 		return
 	end
 
-	local prefab = getPrefab()
-	if not prefab then
-		warn("[OfflineWoodPileController] 未找到预制体 ReplicatedStorage/Instances/Prefabs/" .. PREFAB_NAME)
+	if not self._prefab then
+		if not self._prefabMissingWarned then
+			self._prefabMissingWarned = true
+			warn("[OfflineWoodPileController] 未找到预制体 ReplicatedStorage/Instances/Prefabs/" .. PREFAB_NAME)
+		end
 		return
 	end
 
@@ -139,7 +196,7 @@ function OfflineWoodPileController:_spawnPile(amount: number)
 		return
 	end
 
-	local pile = prefab:Clone()
+	local pile = self._prefab:Clone()
 	local root = pile:FindFirstChild(ROOT_PART_NAME)
 	if root and root:IsA("BasePart") then
 		pile.PrimaryPart = root
@@ -161,6 +218,14 @@ function OfflineWoodPileController:_spawnPile(amount: number)
 	end
 end
 
+function OfflineWoodPileController:_playClaimFeedback()
+	SoundService.SFX.Whoosh:Play()
+	local pile = self._pile
+	if pile then
+		playMergeVfxAt(pile:GetPivot())
+	end
+end
+
 function OfflineWoodPileController:_removePile()
 	if self._pile then
 		self._pile:Destroy()
@@ -178,7 +243,7 @@ function OfflineWoodPileController:_refresh()
 		self:_spawnPile(pending)
 	else
 		if self._claiming then
-			SoundService.SFX.TryOnRemove:Play()
+			self:_playClaimFeedback()
 		end
 		self:_removePile()
 	end
@@ -197,6 +262,9 @@ function OfflineWoodPileController:init()
 
 		-- 先确保基地 SpawnLocation 就绪，避免进服瞬间无法落位
 		waitForMySpawn()
+
+		-- 预制体路径固定，进服时等待复制完成后再缓存
+		self._prefab = resolvePrefab()
 
 		-- 先连信号再首刷，避免错过进服结算事件（_refresh 幂等，重复无害）
 		-- pendingOfflineWood 随 AxeTycoon 同步变化（结算发放 / 领取清零）→ 刷新木堆

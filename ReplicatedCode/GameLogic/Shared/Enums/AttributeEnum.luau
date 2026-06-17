@@ -14,7 +14,7 @@ local AttributeEnum = {
 	Uid = "_uid" :: "_uid",
 	Sit = "_sit" :: "_sit",
 	ZoneKey = "_zoneKey" :: "_zoneKey",
-	FriendLuck = "_friendLuck" :: "_friendLuck",
+	FriendLuck = "_friendLuck" :: "_friendLuck", -- 好友同服 Cash 加成倍率（1=无加成，上限 1.5）
 	IsLock = "_isLock" :: "_isLock",
 	TypeSize = "_typeSize" :: "_typeSize",
 	Luck = "_luck" :: "_luck",
