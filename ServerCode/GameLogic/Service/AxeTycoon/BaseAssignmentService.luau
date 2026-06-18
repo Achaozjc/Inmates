@@ -29,6 +29,8 @@ local PlayerDataKey = require(ReplicatedCode.GameLogic.SharedConstants.Keys.Play
 local RemoteEventKey = require(ReplicatedCode.GameLogic.SharedConstants.Keys.RemoteEventKey)
 local Base = require(ServerCode.GameLogic.Modules.AxeTycoon.Base)
 local ProcessorBaseAttributes = require(ServerCode.GameLogic.Modules.AxeTycoon.ProcessorBaseAttributes)
+local AfkTeleport = require(ReplicatedCode.GameLogic.Shared.Misc.AfkTeleport)
+local BaseStackingAnchor = require(ReplicatedCode.GameLogic.Shared.Misc.BaseStackingAnchor)
 
 -- 基地归属属性名：写在 Base_* 折叠上，记录占用者的 UserId（与客户端 BaseController 共用同一枚举键）
 local OWNER_ID_ATTRIBUTE = AttributeEnum.OwnerId
@@ -97,6 +99,21 @@ local function teleportToBase(player: Player, base: Folder)
 	end
 end
 
+-- AFK 回传：落在堆叠区 TouchedStacking，便于客户端自动收取木头
+local function teleportToStacking(player: Player, base: Folder)
+	local character = player.Character
+	if not character then
+		return
+	end
+	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local stackingPart = BaseStackingAnchor.findPart(base)
+	if root and stackingPart then
+		root.CFrame = BaseStackingAnchor.getStandCFrame(stackingPart)
+	elseif root then
+		teleportToBase(player, base)
+	end
+end
+
 -- 为玩家分配基地：取空闲基地 -> 标记归属 -> 建映射 -> 绑定角色传送
 function BaseAssignmentService.assign(player: Player): Folder?
 	if baseByUserId[player.UserId] then
@@ -128,16 +145,27 @@ function BaseAssignmentService.assign(player: Player): Folder?
 		connectionsByPlayer[player] = connections
 	end
 
+	-- AFK 回传仅首次落点使用堆叠区，后续重生仍回 SpawnLocation
+	local afkReturnPending = AfkTeleport.isPlayerReturnJoin(player)
+	local function placeCharacterAtBase()
+		if afkReturnPending then
+			afkReturnPending = false
+			teleportToStacking(player, base)
+		else
+			teleportToBase(player, base)
+		end
+	end
+
 	-- 角色每次重生都传送回自己的基地
 	connections:add(player.CharacterAdded:Connect(function()
 		-- 等待 HumanoidRootPart 就绪
 		task.wait()
-		teleportToBase(player, base)
+		placeCharacterAtBase()
 	end))
 
 	-- 当前角色已存在则立即传送
 	if player.Character then
-		teleportToBase(player, base)
+		placeCharacterAtBase()
 	end
 
 	return base

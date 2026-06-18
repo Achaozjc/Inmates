@@ -21,6 +21,8 @@ local GameLogic = ReplicatedStorage.ReplicatedCode.GameLogic
 
 local LocalCharacter = require(GameLogic.Modules.LocalCharacter)
 local AttributeEnum = require(GameLogic.Shared.Enums.AttributeEnum)
+local AfkTeleport = require(GameLogic.Shared.Misc.AfkTeleport)
+local BaseStackingAnchor = require(GameLogic.Shared.Misc.BaseStackingAnchor)
 
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() :: Player
 
@@ -80,6 +82,26 @@ function BaseController:returnToBase()
 	rootPart.CFrame = spawnLocation.CFrame + Vector3.new(0, 3, 0)
 end
 
+-- AFK 回传：落在堆叠区 TouchedStacking，站在范围内可自动收取木头
+function BaseController:returnToStacking()
+	local base = self._myBase
+	if not base or not base.Parent then
+		return
+	end
+
+	local rootPart = LocalCharacter.rootPart
+	if not rootPart or not rootPart.Parent then
+		return
+	end
+
+	local stackingPart = BaseStackingAnchor.findPart(base)
+	if stackingPart then
+		rootPart.CFrame = BaseStackingAnchor.getStandCFrame(stackingPart)
+	else
+		self:returnToBase()
+	end
+end
+
 function BaseController:init()
 	if self._started then
 		return
@@ -90,15 +112,26 @@ function BaseController:init()
 		-- 等待服务端完成基地分配
 		self._myBase = waitForMyBase()
 
+		-- AFK 回传仅首次落点使用堆叠区，后续重生仍回 SpawnLocation
+		local afkReturnPending = AfkTeleport.isLocalReturnJoin()
+		local function placeCharacter()
+			if afkReturnPending then
+				afkReturnPending = false
+				self:returnToStacking()
+			else
+				self:returnToBase()
+			end
+		end
+
 		-- 当前角色已就绪则立即归位
 		if LocalCharacter.rootPart then
-			self:returnToBase()
+			placeCharacter()
 		end
 
 		-- 角色每次重生后自动归位
 		LocalCharacter.added:Connect(function(character)
 			if character then
-				self:returnToBase()
+				placeCharacter()
 			end
 		end)
 	end)
