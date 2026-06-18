@@ -96,7 +96,7 @@ function BaseController:returnToStacking()
 
 	local stackingPart = BaseStackingAnchor.findPart(base)
 	if stackingPart then
-		rootPart.CFrame = BaseStackingAnchor.getStandCFrame(stackingPart)
+		rootPart.CFrame = BaseStackingAnchor.getStandCFrame(stackingPart) - stackingPart.CFrame.LookVector * 5
 	else
 		self:returnToBase()
 	end

@@ -1,4 +1,799 @@
 {
   "name": "game",
-  "className": "DataModel"
+  "className": "DataModel",
+  "children": [
+    {
+      "name": "ServerScriptService",
+      "className": "ServerScriptService",
+      "pluginManaged": true,
+      "children": [
+        {
+          "name": "ServerCode",
+          "className": "Folder",
+          "pluginManaged": true,
+          "children": [
+            {
+              "name": "Main",
+              "className": "Script",
+              "pluginManaged": true,
+              "filePaths": [
+                "d:/RobloxProject/Inmates/ServerCode/Main.server.luau"
+              ]
+            },
+            {
+              "name": "GameLogic",
+              "className": "Folder",
+              "pluginManaged": true,
+              "children": [
+                {
+                  "name": "registerDevProducts",
+                  "className": "ModuleScript",
+                  "pluginManaged": true,
+                  "filePaths": [
+                    "d:/RobloxProject/Inmates/ServerCode/GameLogic/registerDevProducts.luau"
+                  ]
+                },
+                {
+                  "name": "ProductRegistry",
+                  "className": "ModuleScript",
+                  "pluginManaged": true,
+                  "filePaths": [
+                    "d:/RobloxProject/Inmates/ServerCode/GameLogic/ProductRegistry.luau"
+                  ]
+                },
+                {
+                  "name": "Components",
+                  "className": "Folder",
+                  "pluginManaged": true,
+                  "children": [
+                    {
+                      "name": "Conveyers",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Components/Conveyers.luau"
+                      ]
+                    },
+                    {
+                      "name": "Character",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Components/Character.luau"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "DataStore",
+                  "className": "Folder",
+                  "pluginManaged": true,
+                  "children": [
+                    {
+                      "name": "CodeConfig",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/DataStore/CodeConfig.luau"
+                      ]
+                    },
+                    {
+                      "name": "CodeDataServer",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/DataStore/CodeDataServer.luau"
+                      ]
+                    },
+                    {
+                      "name": "DefaultPlayerData",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/DataStore/DefaultPlayerData.luau"
+                      ]
+                    },
+                    {
+                      "name": "LeaderboardIgnore",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/DataStore/LeaderboardIgnore.luau"
+                      ]
+                    },
+                    {
+                      "name": "OwnerIds",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/DataStore/OwnerIds.luau"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "Managers",
+                  "className": "Folder",
+                  "pluginManaged": true,
+                  "children": [
+                    {
+                      "name": "PlayerObjectsContainer",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Managers/PlayerObjectsContainer.luau"
+                      ]
+                    },
+                    {
+                      "name": "PurchaseManager",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Managers/PurchaseManager.luau"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "Modules",
+                  "className": "Folder",
+                  "pluginManaged": true,
+                  "children": [
+                    {
+                      "name": "ZoneHandler",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/ZoneHandler.luau"
+                      ]
+                    },
+                    {
+                      "name": "PlayerRig",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/PlayerRig.luau"
+                      ]
+                    },
+                    {
+                      "name": "PotionManager",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/PotionManager.luau"
+                      ]
+                    },
+                    {
+                      "name": "AxeTycoon",
+                      "className": "Folder",
+                      "pluginManaged": true,
+                      "children": [
+                        {
+                          "name": "Slot",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/Slot.luau"
+                          ]
+                        },
+                        {
+                          "name": "Base",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/Base.luau"
+                          ]
+                        },
+                        {
+                          "name": "TycoonState",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/TycoonState.luau"
+                          ]
+                        },
+                        {
+                          "name": "AxeMergeLogic",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/AxeMergeLogic.luau"
+                          ]
+                        },
+                        {
+                          "name": "DebouncedPlayerSave",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/DebouncedPlayerSave.luau"
+                          ]
+                        },
+                        {
+                          "name": "ChestState",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/ChestState.luau"
+                          ]
+                        },
+                        {
+                          "name": "AxeDiscovery",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/AxeDiscovery.luau"
+                          ]
+                        },
+                        {
+                          "name": "ProcessorBaseAttributes",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/AxeTycoon/ProcessorBaseAttributes.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Leaderboard",
+                      "className": "Folder",
+                      "pluginManaged": true,
+                      "children": [
+                        {
+                          "name": "LeaderboardOrderedStore",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Modules/Leaderboard/LeaderboardOrderedStore.luau"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "Service",
+                  "className": "Folder",
+                  "pluginManaged": true,
+                  "children": [
+                    {
+                      "name": "AdminCommandService",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AdminCommandService/init.luau"
+                      ],
+                      "children": [
+                        {
+                          "name": "AdminCommands",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AdminCommandService/AdminCommands/init.luau"
+                          ],
+                          "children": [
+                            {
+                              "name": "Admins",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AdminCommandService/AdminCommands/Admins.luau"
+                              ]
+                            },
+                            {
+                              "name": "Commands",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AdminCommandService/AdminCommands/Commands.luau"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "CloudConfigService",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CloudConfigService/init.luau"
+                      ],
+                      "children": [
+                        {
+                          "name": "CloudConfig",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CloudConfigService/CloudConfig.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "CodeReservationService",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/init.luau"
+                      ],
+                      "children": [
+                        {
+                          "name": "CodeReservation",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/CodeReservation/init.luau"
+                          ],
+                          "children": [
+                            {
+                              "name": "CodeStatus",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/CodeReservation/CodeStatus.luau"
+                              ]
+                            },
+                            {
+                              "name": "Constants",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/CodeReservation/Constants.luau"
+                              ]
+                            },
+                            {
+                              "name": "getItemsFitting",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/CodeReservation/getItemsFitting.luau"
+                              ]
+                            },
+                            {
+                              "name": "LeaderElection",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/CodeReservation/LeaderElection.luau"
+                              ]
+                            },
+                            {
+                              "name": "Manager",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/CodeReservation/Manager.luau"
+                              ]
+                            },
+                            {
+                              "name": "Reservation",
+                              "className": "ModuleScript",
+                              "pluginManaged": true,
+                              "filePaths": [
+                                "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CodeReservationService/CodeReservation/Reservation.luau"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "WeatherService",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/WeatherService.luau"
+                      ]
+                    },
+                    {
+                      "name": "DayNightService",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/DayNightService.luau"
+                      ]
+                    },
+                    {
+                      "name": "PlayerCurrencySpend",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/PlayerCurrencySpend.luau"
+                      ]
+                    },
+                    {
+                      "name": "SeasonPassTaskBridge",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/SeasonPassTaskBridge.luau"
+                      ]
+                    },
+                    {
+                      "name": "ServerBoostService",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/ServerBoostService.luau"
+                      ]
+                    },
+                    {
+                      "name": "CharacterTagService",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/CharacterTagService.luau"
+                      ]
+                    },
+                    {
+                      "name": "Sync",
+                      "className": "Folder",
+                      "pluginManaged": true,
+                      "children": [
+                        {
+                          "name": "RefreshService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/RefreshService.luau"
+                          ]
+                        },
+                        {
+                          "name": "VoteService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/VoteService.luau"
+                          ]
+                        },
+                        {
+                          "name": "SpinService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/SpinService.luau"
+                          ]
+                        },
+                        {
+                          "name": "SeasonPassService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/SeasonPassService.luau"
+                          ]
+                        },
+                        {
+                          "name": "OfflineIncomeService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/OfflineIncomeService.luau"
+                          ]
+                        },
+                        {
+                          "name": "LeaderboardRewardService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/LeaderboardRewardService.luau"
+                          ]
+                        },
+                        {
+                          "name": "RewardService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/RewardService.luau"
+                          ]
+                        },
+                        {
+                          "name": "StoreService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/StoreService.luau"
+                          ]
+                        },
+                        {
+                          "name": "PlayerService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/PlayerService.luau"
+                          ]
+                        },
+                        {
+                          "name": "LeaderboardService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/LeaderboardService.luau"
+                          ]
+                        },
+                        {
+                          "name": "CodeService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/CodeService.luau"
+                          ]
+                        },
+                        {
+                          "name": "EventService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/Sync/EventService.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "AxeTycoon",
+                      "className": "Folder",
+                      "pluginManaged": true,
+                      "children": [
+                        {
+                          "name": "BaseAssignmentService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/BaseAssignmentService.luau"
+                          ]
+                        },
+                        {
+                          "name": "WoodProductionService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/WoodProductionService.luau"
+                          ]
+                        },
+                        {
+                          "name": "AxeService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/AxeService.luau"
+                          ]
+                        },
+                        {
+                          "name": "WoodCarryService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/WoodCarryService.luau"
+                          ]
+                        },
+                        {
+                          "name": "WoodMultiplierService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/WoodMultiplierService.luau"
+                          ]
+                        },
+                        {
+                          "name": "ProcessorService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/ProcessorService.luau"
+                          ]
+                        },
+                        {
+                          "name": "CollectMoneyService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/CollectMoneyService.luau"
+                          ]
+                        },
+                        {
+                          "name": "ProcessorUpgradeService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/ProcessorUpgradeService.luau"
+                          ]
+                        },
+                        {
+                          "name": "ChestProductionService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/ChestProductionService.luau"
+                          ]
+                        },
+                        {
+                          "name": "ChestService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/ChestService.luau"
+                          ]
+                        },
+                        {
+                          "name": "CashMultiplierService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/CashMultiplierService.luau"
+                          ]
+                        },
+                        {
+                          "name": "CashGrantService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/CashGrantService.luau"
+                          ]
+                        },
+                        {
+                          "name": "GamepassService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/GamepassService.luau"
+                          ]
+                        },
+                        {
+                          "name": "GroupRewardService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/GroupRewardService.luau"
+                          ]
+                        },
+                        {
+                          "name": "OfflineWoodService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/OfflineWoodService.luau"
+                          ]
+                        },
+                        {
+                          "name": "TutorialService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/GameLogic/Service/AxeTycoon/TutorialService.luau"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Framework",
+              "className": "Folder",
+              "pluginManaged": true,
+              "children": [
+                {
+                  "name": "DataStore",
+                  "className": "Folder",
+                  "pluginManaged": true,
+                  "children": [
+                    {
+                      "name": "Modules",
+                      "className": "Folder",
+                      "pluginManaged": true,
+                      "children": [
+                        {
+                          "name": "DataStoreWrapper",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/Framework/DataStore/Modules/DataStoreWrapper.luau"
+                          ]
+                        },
+                        {
+                          "name": "getMaxRequestTime",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/Framework/DataStore/Modules/getMaxRequestTime.luau"
+                          ]
+                        },
+                        {
+                          "name": "SessionLockedDataStoreWrapper",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/Framework/DataStore/Modules/SessionLockedDataStoreWrapper.luau"
+                          ]
+                        },
+                        {
+                          "name": "HttpProxyService",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/Framework/DataStore/Modules/HttpProxyService.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PlayerData",
+                      "className": "Folder",
+                      "pluginManaged": true,
+                      "children": [
+                        {
+                          "name": "PlayerDataServer",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/Framework/DataStore/PlayerData/PlayerDataServer.luau"
+                          ]
+                        },
+                        {
+                          "name": "ReceiptProcessor",
+                          "className": "ModuleScript",
+                          "pluginManaged": true,
+                          "filePaths": [
+                            "d:/RobloxProject/Inmates/ServerCode/Framework/DataStore/PlayerData/ReceiptProcessor.luau"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "Managers",
+                  "className": "Folder",
+                  "pluginManaged": true,
+                  "children": [
+                    {
+                      "name": "AnalyticsManager",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/Framework/Managers/AnalyticsManager.luau"
+                      ]
+                    },
+                    {
+                      "name": "StatisticManager",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/Framework/Managers/StatisticManager.luau"
+                      ]
+                    },
+                    {
+                      "name": "TeleportManager",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/Framework/Managers/TeleportManager.luau"
+                      ]
+                    },
+                    {
+                      "name": "ChatManager",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/Framework/Managers/ChatManager.luau"
+                      ]
+                    },
+                    {
+                      "name": "AdminAbuseManager",
+                      "className": "ModuleScript",
+                      "pluginManaged": true,
+                      "filePaths": [
+                        "d:/RobloxProject/Inmates/ServerCode/Framework/Managers/AdminAbuseManager.luau"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
