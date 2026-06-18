@@ -12,7 +12,6 @@ local Network = require(ReplicatedStorage.ReplicatedCode.Framework.Core.Network)
 local RemoteEventName = require(ReplicatedStorage.ReplicatedCode.Framework.Core.Network.RemoteName.RemoteEventName)
 local PlaceId = require(ReplicatedStorage.ReplicatedCode.GameLogic.Shared.Misc.PlaceId)
 local t = Network.t
-local RemoteEvents = Network.RemoteEvents
 
 local ATTEMPT_LIMIT = 5
 local RETRY_DELAY = 1
@@ -32,7 +31,7 @@ local function SafeTeleport(players: { Player }, placeId: number, options: Telep
         return false, "Player data save failed"
     end
 
-    Network.fireClientFor(RemoteEvents.Teleport_Gui, players, true)
+    Network.fireClientFor(RemoteEventName.Teleport_Gui, players, true)
 
     local success, result = retryAsync(function()
         return TeleportService:TeleportAsync(placeId, players, options) -- teleport the user in a protected call to prevent erroring在受保护的调用中传送用户，以防止出错
@@ -150,7 +149,7 @@ local function handleFailedTeleport(
         )
     end
 
-    Network.fireClient(RemoteEvents.Teleport_Gui, player, false)
+    Network.fireClient(RemoteEventName.Teleport_Gui, player, false)
     TeleportManager.tagTeleport({ player })
 
     SafeTeleport({ player }, targetPlaceId, teleportOptions)
