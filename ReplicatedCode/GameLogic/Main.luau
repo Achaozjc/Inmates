@@ -10,6 +10,7 @@ local Binder = require(Framework.Core.Binder)
 local InputContextManager = require(Framework.Input.InputContextManager)
 local UISetup = require(Framework.UI.UISetup)
 local AttributeEnum = require(GameLogic.Shared.Enums.AttributeEnum)
+local AutoAFK = require(Framework.Effects.AutoAFK)
 
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() :: Player
 
@@ -127,6 +128,9 @@ function client.start()
 
 	local VolumeManager = require(Framework.Managers.VolumeManager)
 	VolumeManager.start()
+
+	-- 启动自动 AFK 检测
+	AutoAFK.new()
 
 	local componentsFolder = GameLogic:FindFirstChild("Components")
 	if componentsFolder and componentsFolder:IsA("Folder") then

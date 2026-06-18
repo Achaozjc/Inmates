@@ -23,6 +23,7 @@ local CodeDataServer = require(GameLogic.DataStore.CodeDataServer)
 local GameSetting = require(SharedGameLogic.Shared.Settings.GameSetting)
 local PlayerService = require(GameLogic.Service.Sync.PlayerService)
 local registerDevProducts = require(GameLogic.registerDevProducts)
+local TeleportManager = require(ServerCode.Framework.Managers.TeleportManager)
 
 local function getModule(root: Instance, ...: string): ModuleScript
 	local current = root
@@ -76,6 +77,7 @@ local function onPlayerRemoving(player: Player)
 end
 
 Network.startServer(RemoteEventKey, RemoteFunctionKey)
+TeleportManager.start()
 PlayerDataServer.start(GameSetting.DATA_STORE_NAME, { ReceiptProcessor.receiptHistoryValueName }, DefaultPlayerData)
 registerDevProducts()
 ReceiptProcessor.start()

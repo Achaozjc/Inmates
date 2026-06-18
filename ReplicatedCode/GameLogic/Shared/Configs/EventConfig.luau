@@ -42,71 +42,37 @@ end
 -- key 为列表排序用字符串；done=true 归入 Update 区，否则在 Event 区
 EventConfig.events = {
 	["1"] = {
-		name = "Update 2",
-		eventId = "6050060078436975212",
-		done = true,
+		name = "Update 1",
+		eventId = "3595773247188238927",
+		done = false,
 		des = [[
 
-New Brainrots!
-New Houses!
-New Items!
-Stay tuned for the next major update!
+👮👮👮Stay tuned for update 1!👮👮👮👮
 
 ]],
 	},
 	["2"] = {
-		name = "Admin Abuse!",
-		eventId = "5783418750535598747",
-		done = true,
-		des = [[
-
-The 2nd ADMIN ABUSE! Stay tuned!
-
-]],
-	},
-	["15"] = {
-		name = "Update 9",
-		eventId = "5222895159557096049",
+		name = "Update 2",
+		eventId = "6913022917932614295",
 		done = false,
 		des = [[
 
-NEW SUMMER BEACH PARTY EVENT HOUSE!
-10 NEW SUMMER BEACH PARTY BRAINROTS!
-New Summer brainrots every month!
-Stay tuned for next weeks udpate!
+👮👮👮Stay tuned for update 2!👮👮👮👮
 
 ]],
 	},
-	["16"] = {
-		name = "Admin Abuse!",
-		eventId = "2403814192810427004",
+	["3"] = {
+		name = "Update 3",
+		eventId = "3248619768026104422",
 		done = false,
 		des = [[
 
-Get ready for a new round of Admin Abuse with new events!
+👮👮👮Stay tuned for update 3!👮👮👮👮
+
 
 ]],
-	},
-	["17"] = {
-		name = "Update 10",
-		eventId = "7677021055671730801",
-		done = false,
-		des = [[
+	}
 
-Stay tuned for more information!
-
-]],
-	},
-	["18"] = {
-		name = "Admin Abuse!",
-		eventId = "2473418776406786646",
-		done = false,
-		des = [[
-
-Get ready for a new round of Admin Abuse with new events!
-
-]],
-	},
 } :: { [string]: EventEntry }
 
 return EventConfig
