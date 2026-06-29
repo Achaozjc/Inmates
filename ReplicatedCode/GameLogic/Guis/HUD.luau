@@ -65,6 +65,7 @@ type PayCashTier = {
 local payCashTiers: { PayCashTier } = {}
 local lastPayCashClickAt = 0
 local lastHomeClickAt = 0
+local lastInviteClickAt = 0
 
 -- 切换 Menu 层显示（TopButtons 的 Codes / Config 等入口）
 local function toggleMenuLayer(layerId: UILayerId.EnumType)
@@ -135,6 +136,11 @@ local function bindTopButtons(gui: ScreenGui)
 	local inviteBtn = topButtons:FindFirstChild("Invite")
 	if inviteBtn and inviteBtn:IsA("GuiButton") then
 		inviteBtn.Activated:Connect(function()
+			local now = os.clock()
+			if now - lastInviteClickAt < BaseConfig.BUTTON_DEBOUNCE then
+				return
+			end
+			lastInviteClickAt = now
 			SocialManager.OpenGameInvite()
 		end)
 	else
@@ -449,7 +455,6 @@ function HUD:start()
 	cashMultiplierPrice = button:WaitForChild("Price") :: TextLabel
 	cashMultiplierLabel = leftInfos:WaitForChild("CashMultiplier") :: TextLabel
 	friendBoostLabel = leftInfos:WaitForChild("FriendBoost") :: TextLabel
-	friendBoostLabel.Active = true
 
 	local payCash = leftInfos:WaitForChild("PayCash") :: Frame
 	buildPayCash(payCash)
@@ -506,15 +511,6 @@ function HUD:listen()
 	end)
 
 	localPlayer:GetAttributeChangedSignal(AttributeEnum.FriendLuck):Connect(refreshFriendBoostLabel)
-
-	local friendBoost = friendBoostLabel
-	if friendBoost then
-		friendBoost.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				SocialManager.OpenGameInvite()
-			end
-		end)
-	end
 end
 
 return HUD

@@ -35,8 +35,11 @@ local _experienceEventInfoCache: { [string]: any } = {}
 local DIRECT_JOIN_URL = "https://www.roblox.com/games/start?placeId=%d&launchData=%s" :: any
 local EVENT_QUERY_FAILURE_RETRY_SECONDS = 30
 local EVENT_QUERY_WARN_COOLDOWN_SECONDS = 60
+-- 原生邀请面板关闭后短时间内重复弹出会严重影响移动端体验
+local INVITE_PROMPT_COOLDOWN_SECONDS = 60
 
 local InviteOptions = Instance.new("ExperienceInviteOptions")
+local lastInvitePromptAt = 0
 InviteOptions.PromptMessage = "Invite friends to get boosts!!"
 
 local LAUNCH_DATA = {
@@ -127,8 +130,14 @@ function SocialManager.PromptOptIn()
 end
 
 function SocialManager.OpenGameInvite()
+    local now = os.clock()
+    if now - lastInvitePromptAt < INVITE_PROMPT_COOLDOWN_SECONDS then
+        return
+    end
+
     local canInvite = canSendGameInvite(localPlayer)
     if canInvite then
+        lastInvitePromptAt = now
         local ok, err = pcall(function()
             SocialService:PromptGameInvite(localPlayer, InviteOptions)
         end)
