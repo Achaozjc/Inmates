@@ -19,6 +19,7 @@ local StatisticKeys = {
 	sold = "sold" :: "sold",
 	lv = "lv" :: "lv",
 	lucky = "lucky" :: "lucky",
+	total_merges = "total_merges" :: "total_merges",
 }
 
 return StatisticKeys

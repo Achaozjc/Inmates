@@ -47,6 +47,8 @@ local Base = require(ServerCode.GameLogic.Modules.AxeTycoon.Base)
 local AxeMergeLogic = require(ServerCode.GameLogic.Modules.AxeTycoon.AxeMergeLogic)
 local AxeDiscovery = require(ServerCode.GameLogic.Modules.AxeTycoon.AxeDiscovery)
 local BaseAssignmentService = require(ServerCode.GameLogic.Service.AxeTycoon.BaseAssignmentService)
+local StatisticManager = require(ServerCode.Framework.Managers.StatisticManager)
+local StatisticKeys = require(ReplicatedCode.GameLogic.SharedConstants.Keys.StatisticKeys)
 
 -- 购买固定产出最低级斧子，由合成系统逐级升级
 local BUY_CATEGORY = AxeCategory.Axe_1
@@ -216,6 +218,7 @@ function AxeService.merge(player: Player): boolean
 		return data
 	end)
 	persistAxesFromBase(player, baseObject)
+	StatisticManager.add(player, { [StatisticKeys.total_merges] = 1 })
 	return true
 end
 

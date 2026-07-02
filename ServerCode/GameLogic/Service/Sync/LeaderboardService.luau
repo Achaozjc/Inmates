@@ -7,7 +7,7 @@
 	  2. 读回 Top100 并缓存（含玩家名 / UserId / 展示字符串）；
 	  3. 通过 RemoteFunction(GetLeaderboard) 暴露给客户端拉取。
 
-	榜单注册见 LeaderboardConfig（Axes / Cash / PlayTime）。展示层（GUI）不在本服务职责内。
+	榜单注册见 LeaderboardConfig（Lifetime Cash / Playtime / Total Merges）。展示层由 LeaderboardScreen 组件负责。
 ]]
 
 local Players = game:GetService("Players")
@@ -29,6 +29,7 @@ local LeaderboardScore = require(SharedLogic.Shared.Leaderboard.LeaderboardScore
 local PlayerDataServer = require(ServerCode.Framework.DataStore.PlayerData.PlayerDataServer)
 local StatisticManager = require(ServerCode.Framework.Managers.StatisticManager)
 local LeaderboardOrderedStore = require(ServerCode.GameLogic.Modules.Leaderboard.LeaderboardOrderedStore)
+local LeaderboardScreenRegistry = require(ServerCode.GameLogic.Modules.Leaderboard.LeaderboardScreenRegistry)
 local LeaderboardIgnore = require(ServerCode.GameLogic.DataStore.LeaderboardIgnore)
 
 local DISPLAY_COUNT = 100
@@ -92,6 +93,18 @@ local function buildEntries(boardId: string, sorted: { LeaderboardOrderedStore.S
 	return entries
 end
 
+-- 将缓存条目转为展示屏所需的 { key, value } 格式
+local function entriesToRegistryPayload(entries: { Entry }): { { key: string, value: number } }
+	local payload: { { key: string, value: number } } = {}
+	for _, entry in ipairs(entries) do
+		table.insert(payload, {
+			key = string.format("%s_%d", entry.name, entry.userId),
+			value = entry.score,
+		})
+	end
+	return payload
+end
+
 -- 刷新单个榜单：写入在线玩家分值 → 读回 Top100 → 更新缓存
 local function updateBoardAsync(boardId: string)
 	local store = stores[boardId]
@@ -127,6 +140,7 @@ local function updateBoardAsync(boardId: string)
 
 	if success and sorted then
 		caches[boardId] = buildEntries(boardId, sorted)
+		LeaderboardScreenRegistry.update(boardId, entriesToRegistryPayload(caches[boardId]))
 	end
 end
 

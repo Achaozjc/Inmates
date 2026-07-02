@@ -14,6 +14,10 @@ local StatisticEnum = {
 		key = StatisticKeys.earn_cash,
 	},
 	{
+		name = "Total Merges",
+		key = StatisticKeys.total_merges,
+	},
+	{
 		name = "Robux Spent",
 		key = StatisticKeys.spend_robux,
 	},

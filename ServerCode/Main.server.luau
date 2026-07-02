@@ -93,6 +93,7 @@ startService("SeasonPassService", getModule(GameLogic, "Service", "Sync", "Seaso
 startService("OfflineIncomeService", getModule(GameLogic, "Service", "Sync", "OfflineIncomeService"))
 startService("LeaderboardService", getModule(GameLogic, "Service", "Sync", "LeaderboardService"))
 startService("LeaderboardRewardService", getModule(GameLogic, "Service", "Sync", "LeaderboardRewardService"))
+require(getModule(GameLogic, "Components", "LeaderboardScreen")).bootstrapWorkspace()
 startService("ServerBoostService", getModule(GameLogic, "Service", "ServerBoostService"))
 startService("VoteService", getModule(GameLogic, "Service", "Sync", "VoteService"))
 CodeDataServer.start()

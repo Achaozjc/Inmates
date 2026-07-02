@@ -23,29 +23,26 @@ local LeaderboardTypes = require(ReplicatedStorage.ReplicatedCode.GameLogic.Shar
 local LeaderboardConfig = {}
 
 LeaderboardConfig.Boards = {
-	-- 总斧子数：累计拥有斧头数（只增不减，存于 AxeTycoon.ownedAxeCount）
-	[OrderedStoreNames.Axes] = {
-		name = "Total Axes",
-		order = 1,
-		metricKind = LeaderboardTypes.MetricKind.Integer,
-		persistence = { kind = LeaderboardTypes.PersistenceKind.Lifetime },
-		source = { kind = "playerData", path = { "AxeTycoon", "ownedAxeCount" } },
-	},
-	-- 总 Cash：累计赚取现金（Statistic.all.earn_cash，PlayerService.addCash 已统计）
 	[OrderedStoreNames.Cash] = {
-		name = "Total Cash",
-		order = 2,
+		name = "Lifetime Cash",
+		order = 1,
 		metricKind = LeaderboardTypes.MetricKind.Currency,
 		persistence = { kind = LeaderboardTypes.PersistenceKind.Lifetime },
 		source = { kind = "statistic", statisticType = StatisticTypeCategory.all, dataKey = StatisticKeys.earn_cash },
 	},
-	-- 总在线时长：累计在线分钟数（Statistic.all.online，PlayerService 每分钟 +1）
 	[OrderedStoreNames.PlayTime] = {
-		name = "Play Time",
-		order = 3,
+		name = "Playtime",
+		order = 2,
 		metricKind = LeaderboardTypes.MetricKind.DurationMinutes,
 		persistence = { kind = LeaderboardTypes.PersistenceKind.Lifetime },
 		source = { kind = "statistic", statisticType = StatisticTypeCategory.all, dataKey = StatisticKeys.online },
+	},
+	[OrderedStoreNames.TotalMerges] = {
+		name = "Total Merges",
+		order = 3,
+		metricKind = LeaderboardTypes.MetricKind.Integer,
+		persistence = { kind = LeaderboardTypes.PersistenceKind.Lifetime },
+		source = { kind = "statistic", statisticType = StatisticTypeCategory.all, dataKey = StatisticKeys.total_merges },
 	},
 }
 
