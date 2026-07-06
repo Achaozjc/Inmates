@@ -22,14 +22,11 @@ local IconCategory = {
 	} :: { [DayNightCategory.EnumType]: string },
 
 	Weather = {
-		[WeatherCategory.Clear] = "rbxassetid://121839456945469",
-		[WeatherCategory.Rain] = "rbxassetid://82146014687847",
-		[WeatherCategory.Foggy] = "rbxassetid://84773162064523",
-		[WeatherCategory.Windy] = "rbxassetid://73999359152981",
-		[WeatherCategory.Snow] = "rbxassetid://118918734655564",
-		[WeatherCategory.Thunderstorm] = "rbxassetid://72265738285160",
-		[WeatherCategory.Rainbow] = "rbxassetid://117480719337635",
-		[WeatherCategory.Tornado] = "rbxassetid://79907163826773",
+		[WeatherCategory.Sunny] = "rbxassetid://119531317629257",
+		[WeatherCategory.Rain] = "rbxassetid://81925884515883",
+		[WeatherCategory.Fog] = "rbxassetid://82502243391145",
+		[WeatherCategory.Snow] = "rbxassetid://130574613275771",
+		[WeatherCategory.Thunderstorm] = "rbxassetid://136579182930227",
 	} :: { [WeatherCategory.EnumType]: string },
 
 	Items = {

@@ -28,6 +28,7 @@ local PlayerService = require(ServerCode.GameLogic.Service.Sync.PlayerService)
 local BaseAssignmentService = require(ServerCode.GameLogic.Service.AxeTycoon.BaseAssignmentService)
 local DebouncedPlayerSave = require(ServerCode.GameLogic.Modules.AxeTycoon.DebouncedPlayerSave)
 local CashMultiplierService = require(ServerCode.GameLogic.Service.AxeTycoon.CashMultiplierService)
+local EnvironmentBuffHelper = require(ReplicatedCode.GameLogic.Shared.Weather.EnvironmentBuffHelper)
 
 local COLLECT_BUTTON_NAME = "CollectMoney"
 
@@ -85,7 +86,10 @@ function CollectMoneyService.collect(player: Player): boolean
 
 	-- Cash 倍率 + 好友同服加成在领取时统一结算（未购买/无好友均为 1）
 	local payout = math.floor(
-		pending * CashMultiplierService.getMultiplier(player) * PlayerService.getFriendBoostMultiplier(player)
+		pending
+			* CashMultiplierService.getMultiplier(player)
+			* PlayerService.getFriendBoostMultiplier(player)
+			* EnvironmentBuffHelper.getMoneyCollectMultiplier()
 	)
 	PlayerService.addCash(player, CashKey.Cash, payout, TransactionEnum.Gameplay, "collect")
 	CollectMoneyService.updateBillboard(player)

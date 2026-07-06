@@ -3,12 +3,14 @@
 
 
 export type EnumType = 
-	"min15"
+	"min5"
+| "min15"
 | "hour" 
 | "daily" 
 | "weekly" 
 
 local TimestampCategory = {
+	min5 = "min5" :: "min5",
 	min15 = "min15" :: "min15",
 	hour = "hour" :: "hour",
 	daily = "daily" :: "daily",

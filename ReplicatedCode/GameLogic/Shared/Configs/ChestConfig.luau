@@ -213,14 +213,33 @@ function ChestConfig.getAxeProbabilities(category: string): { AxeProbability }
 end
 
 -- 按权重随机抽取该宝箱开出的斧头等级，返回 AxeCategory 值
-function ChestConfig.rollAxe(category: string): string?
+-- weightAdd：天气加成，加到该宝箱最高稀有度斧头的权重上
+function ChestConfig.rollAxe(category: string, weightAdd: number?): string?
 	local chest = ChestConfig.Chests[category]
 	if not chest then
 		return nil
 	end
 
+	local adjustedWeights: { [string]: number } = {}
+	local topAxeCategory: string? = nil
+	local topRarity = -1
+
+	for axeCategory, weight in chest.axeWeights do
+		adjustedWeights[axeCategory] = weight
+		local axeInfo = AxeConfig.Axes[axeCategory]
+		local rarity = if axeInfo then axeInfo.rarity else 0
+		if rarity > topRarity then
+			topRarity = rarity
+			topAxeCategory = axeCategory
+		end
+	end
+
+	if weightAdd and weightAdd > 0 and topAxeCategory then
+		adjustedWeights[topAxeCategory] = (adjustedWeights[topAxeCategory] or 0) + weightAdd
+	end
+
 	local total = 0
-	for _, weight in chest.axeWeights do
+	for _, weight in adjustedWeights do
 		total += weight
 	end
 	if total <= 0 then
@@ -229,7 +248,7 @@ function ChestConfig.rollAxe(category: string): string?
 
 	local roll = math.random() * total
 	local cumulative = 0
-	for axeCategory, weight in chest.axeWeights do
+	for axeCategory, weight in adjustedWeights do
 		cumulative += weight
 		if roll <= cumulative then
 			return axeCategory

@@ -31,6 +31,7 @@ local TimeTokenCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.Sha
 local getUTCMinTimestamp = require(ReplicatedStorage.ReplicatedCode.Framework.Utility.Time.GetUTCMinTimestamp)
 
 -- 常量定义
+local MIN_5_SECONDS = TimeTokenCategory.minutes * 5
 local MIN_15_SECONDS = TimeTokenCategory.minutes * 15
 
 local RefreshService = {}
@@ -41,12 +42,14 @@ type Timestamps = {
 }
 
 RefreshService.Timestamps = {
+	[TimestampCategory.min5] = 0,
 	[TimestampCategory.min15] = 0,
 	[TimestampCategory.daily] = 0,
 	[TimestampCategory.weekly] = 0,
 } :: Timestamps
 
 -- 服务端内部事件，供其他服务监听
+RefreshService.newMin5 = Instance.new("BindableEvent")
 RefreshService.newMin15 = Instance.new("BindableEvent")
 RefreshService.newDay = Instance.new("BindableEvent")
 RefreshService.newWeek = Instance.new("BindableEvent")
@@ -59,10 +62,24 @@ RefreshService.timeStampChanged = Instance.new("BindableEvent")
 -- 初始化/更新所有时间戳
 -- 通常在服务器启动时调用
 function RefreshService.updateTimestamp()
+	RefreshService.update5minTimestamp()
 	RefreshService.update15minTimestamp()
 	RefreshService.updateDayTimestamp()
 	RefreshService.updateWeekTimestamp()
 	RefreshService.timeStampChanged:Fire(RefreshService.Timestamps)
+end
+
+-- 更新 5 分钟周期时间戳
+function RefreshService.update5minTimestamp()
+	RefreshService.Timestamps[TimestampCategory.min5] = getUTCMinTimestamp(MIN_5_SECONDS)
+
+	Network.fireAllClients(
+		RemoteEventKey.Refresh_Timestamp,
+		TimestampCategory.min5,
+		RefreshService.Timestamps[TimestampCategory.min5]
+	)
+
+	RefreshService.newMin5:Fire(RefreshService.Timestamps[TimestampCategory.min5])
 end
 
 -- 更新 15 分钟周期时间戳
@@ -110,6 +127,12 @@ end
 -- 检查并处理时间到达
 -- @param now: 当前服务器时间
 local function checkTimestamps(now: number)
+	-- 5分钟刷新
+	if RefreshService.Timestamps[TimestampCategory.min5] <= now then
+		print("[RefreshService] 5 Minute Refresh Triggered")
+		RefreshService.update5minTimestamp()
+	end
+
 	-- 15分钟刷新
 	if RefreshService.Timestamps[TimestampCategory.min15] <= now then
 		print("[RefreshService] 15 Minute Refresh Triggered")

@@ -5,114 +5,113 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WeatherCategory = require(ReplicatedStorage.ReplicatedCode.GameLogic.SharedConstants.Categories.WeatherCategory)
 
 export type EnumType = WeatherCategory.EnumType
+
 export type WeatherBooster = {
-	luck: number?,
+	woodProductionCdMultiplier: number?,
+	woodCollectBonusPercent: number?,
+	moneyCollectMultiplier: number?,
+	processorSpeedMultiplier: number?,
 }
-export type MutationWeightBonusMap = { [number]: number }
 
 type WeatherInfo = {
 	name: string,
+	icon: string,
 	des: string,
 	booster: WeatherBooster,
 }
 
 local WeatherEnum = {}
 
+WeatherEnum.Emoji = {
+	[WeatherCategory.Sunny] = "☀️",
+	[WeatherCategory.Rain] = "🌧️",
+	[WeatherCategory.Fog] = "🌫️",
+	[WeatherCategory.Snow] = "❄️",
+	[WeatherCategory.Thunderstorm] = "⛈️",
+} :: { [WeatherCategory.EnumType]: string }
+
 WeatherEnum.Weather = {
-	[WeatherCategory.Clear] = {
-		name = WeatherCategory.Clear,
-		des = "Clear skies. No special effects.",
+	[WeatherCategory.Sunny] = {
+		name = WeatherCategory.Sunny,
+		icon = "rbxassetid://119531317629257",
+		des = "All is normal on the factory.",
 		booster = {},
-	} :: WeatherInfo,
-
-	[WeatherCategory.Windy] = {
-		name = WeatherCategory.Windy,
-		des = "Windy weather. Movement and ambient effects may feel stronger.",
-		booster = { luck = 0.02 },
-	} :: WeatherInfo,
-
-	[WeatherCategory.Foggy] = {
-		name = WeatherCategory.Foggy,
-		des = "Misty weather. Visibility is reduced.",
-		booster = { luck = 0.02 },
 	} :: WeatherInfo,
 
 	[WeatherCategory.Rain] = {
 		name = WeatherCategory.Rain,
-		des = "Rainy weather. Outdoor effects are active.",
-		booster = { luck = 0.03 },
+		icon = "rbxassetid://81925884515883",
+		des = "Wood production cooldown -20%.",
+		booster = {
+			woodProductionCdMultiplier = 0.8,
+		},
+	} :: WeatherInfo,
+
+	[WeatherCategory.Fog] = {
+		name = WeatherCategory.Fog,
+		icon = "rbxassetid://82502243391145",
+		des = "Wood pickup amount +20% (rounded down).",
+		booster = {
+			woodCollectBonusPercent = 20,
+		},
 	} :: WeatherInfo,
 
 	[WeatherCategory.Snow] = {
 		name = WeatherCategory.Snow,
-		des = "Snowy weather. Cold ambient effects are active.",
-		booster = { luck = 0.03 },
+		icon = "rbxassetid://130574613275771",
+		des = "Money collection +20%.",
+		booster = {
+			moneyCollectMultiplier = 1.2,
+		},
 	} :: WeatherInfo,
 
 	[WeatherCategory.Thunderstorm] = {
 		name = WeatherCategory.Thunderstorm,
-		des = "Stormy weather. Lightning effects are active.",
-		booster = { luck = 0.04 },
-	} :: WeatherInfo,
-
-	[WeatherCategory.Tornado] = {
-		name = WeatherCategory.Tornado,
-		des = "Tornado weather. Strong wind effects are active.",
-		booster = { luck = 0.04 },
-	} :: WeatherInfo,
-
-	[WeatherCategory.Rainbow] = {
-		name = WeatherCategory.Rainbow,
-		des = "Rainbow weather. A rare lucky forecast.",
-		booster = { luck = 0.05 },
+		icon = "rbxassetid://136579182930227",
+		des = "Wood processing speed +20%.",
+		booster = {
+			processorSpeedMultiplier = 1.2,
+		},
 	} :: WeatherInfo,
 } :: { [WeatherCategory.EnumType]: WeatherInfo }
 
-local weightsDay = {
-	{ category = WeatherCategory.Clear, weight = 2502 },
-	{ category = WeatherCategory.Foggy, weight = 2441 },
-	{ category = WeatherCategory.Windy, weight = 2440 },
-	{ category = WeatherCategory.Rain, weight = 2130 },
-	{ category = WeatherCategory.Snow, weight = 200 },
-	{ category = WeatherCategory.Thunderstorm, weight = 100 },
-	{ category = WeatherCategory.Tornado, weight = 100 },
-	{ category = WeatherCategory.Rainbow, weight = 87 },
+local weights = {
+	{ category = WeatherCategory.Sunny, weight = 1200 },
+	{ category = WeatherCategory.Rain, weight = 300 },
+	{ category = WeatherCategory.Fog, weight = 100 },
+	{ category = WeatherCategory.Snow, weight = 100 },
+	{ category = WeatherCategory.Thunderstorm, weight = 45 },
 } :: { { category: WeatherCategory.EnumType, weight: number } }
 
-local weightsNight = {
-	{ category = WeatherCategory.Clear, weight = 2870 },
-	{ category = WeatherCategory.Foggy, weight = 2441 },
-	{ category = WeatherCategory.Windy, weight = 2441 },
-	{ category = WeatherCategory.Rain, weight = 2130 },
-	{ category = WeatherCategory.Snow, weight = 80 },
-	{ category = WeatherCategory.Thunderstorm, weight = 20 },
-	{ category = WeatherCategory.Tornado, weight = 18 },
-	{ category = WeatherCategory.Rainbow, weight = 0 },
-} :: { { category: WeatherCategory.EnumType, weight: number } }
-
-local function getWeather(rng: Random, isDay: boolean): WeatherCategory.EnumType
-	local currentWeights = if isDay then weightsDay else weightsNight
+local function getWeather(): WeatherCategory.EnumType
 	local totalWeight = 0
-	for _, item in ipairs(currentWeights) do
+	for _, item in ipairs(weights) do
 		totalWeight += item.weight
 	end
+	if totalWeight <= 0 then
+		return WeatherCategory.Sunny
+	end
 
-	local chance = rng:NextNumber() * totalWeight
+	local chance = math.random() * totalWeight
 	local cumulative = 0
-	for _, item in ipairs(currentWeights) do
+	for _, item in ipairs(weights) do
 		cumulative += item.weight
 		if chance <= cumulative then
 			return item.category
 		end
 	end
 
-	return WeatherCategory.Clear
+	return WeatherCategory.Sunny
 end
 
-function WeatherEnum.getRandomWeather(timestamp: number, isDay: boolean): WeatherCategory.EnumType
-	local seed = timestamp + (if isDay then 1 else 0)
-	local rng = Random.new(math.floor(seed))
-	return getWeather(rng, isDay)
+function WeatherEnum.getRandomWeather(timestamp: number): WeatherCategory.EnumType
+	math.randomseed(timestamp)
+	return getWeather()
+end
+
+function WeatherEnum.getWeatherScheduledForRollUnix(rollUnix: number): WeatherCategory.EnumType
+	math.randomseed(rollUnix)
+	return getWeather()
 end
 
 function WeatherEnum.getBooster(weather: WeatherCategory.EnumType): WeatherBooster
@@ -120,8 +119,9 @@ function WeatherEnum.getBooster(weather: WeatherCategory.EnumType): WeatherBoost
 	return if info then info.booster else {}
 end
 
-function WeatherEnum.getMutationWeightBonus(_weather: WeatherCategory.EnumType): MutationWeightBonusMap
-	return {}
+function WeatherEnum.getIcon(weather: WeatherCategory.EnumType): string
+	local info = WeatherEnum.Weather[weather]
+	return if info then info.icon else ""
 end
 
 return WeatherEnum

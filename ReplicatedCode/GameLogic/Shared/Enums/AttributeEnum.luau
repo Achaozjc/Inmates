@@ -39,6 +39,7 @@ local AttributeEnum = {
 	Oxygen = "_oxygen" :: "_oxygen",
 	OxygenMax = "_oxygenMax" :: "_oxygenMax",
 	CurrentWeather = "_currentWeather" :: "_currentWeather",
+	WeatherDuration = "_weatherDuration" :: "_weatherDuration",
 	ActiveDevActivity = "ActiveDevActivity" :: "ActiveDevActivity",
 	Clock = "_clock" :: "_clock",
 	ClockTime = "_clockTime" :: "_clockTime",

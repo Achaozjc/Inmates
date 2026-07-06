@@ -10,6 +10,7 @@
 	   - Top.Value：当前倍率，如 "1.2x"
 	   - Bar.Handle：右对齐固定，仅调整 Size.X.Scale 表示反向进度（1.0x ~ 1.5x）
 	   - Bottom.CountDown：距离下次刷新秒数，如 "30s"
+	   - Weather.TextLabel：下一场天气与倒计时（移植自 dingdong 天气 Billboard）
 
 	状态来源：服务端写在 Workspace 上的属性（晚加入兜底）+ AxeTycoonSync 远程事件（实时推送）。
 
@@ -28,6 +29,7 @@ local Network = require(Framework.Core.Network)
 local AttributeEnum = require(GameLogic.Shared.Enums.AttributeEnum)
 local WoodMultiplierConfig = require(GameLogic.Shared.Configs.WoodMultiplierConfig)
 local RemoteEventKey = require(GameLogic.SharedConstants.Keys.RemoteEventKey)
+local WeatherForecastHelper = require(GameLogic.Shared.Weather.WeatherForecastHelper)
 
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() :: Player
 
@@ -39,6 +41,7 @@ local WoodMultiplierController = {
 	_gui = nil :: SurfaceGui?,
 	_valueLabel = nil :: TextLabel?,
 	_countDownLabel = nil :: TextLabel?,
+	_weatherLabel = nil :: TextLabel?,
 	_handle = nil :: Frame?,
 	_nextRefreshAt = 0,
 	_countdownThread = nil :: thread?,
@@ -111,6 +114,16 @@ local function resolveElements(gui: SurfaceGui): (TextLabel?, TextLabel?, Frame?
 	return nil, nil, nil
 end
 
+-- 解析 WoodMultiplierGui.Weather.TextLabel（移植自 dingdong 天气 Billboard）
+local function resolveWeatherLabel(gui: SurfaceGui): TextLabel?
+	local weatherFrame = gui:FindFirstChild("Weather")
+	if not weatherFrame then
+		return nil
+	end
+	local label = weatherFrame:FindFirstChild("TextLabel")
+	return if label and label:IsA("TextLabel") then label else nil
+end
+
 local function formatCountdown(seconds: number): string
 	return string.format("%ds", math.max(0, math.ceil(seconds)))
 end
@@ -141,6 +154,14 @@ function WoodMultiplierController:refreshCountdown()
 	label.Text = formatCountdown(remaining)
 end
 
+function WoodMultiplierController:refreshWeatherLabel()
+	local label = self._weatherLabel
+	if not label then
+		return
+	end
+	label.Text = WeatherForecastHelper.getBillboardLine()
+end
+
 -- 读 Workspace 属性兜底初始化（晚加入时远程事件可能已错过）
 function WoodMultiplierController:readWorkspaceAttributes()
 	local multiplier = Workspace:GetAttribute(WoodMultiplierConfig.ATTR_MULTIPLIER)
@@ -158,6 +179,7 @@ function WoodMultiplierController:startCountdownLoop()
 	self._countdownThread = task.spawn(function()
 		while self._started do
 			self:refreshCountdown()
+			self:refreshWeatherLabel()
 			task.wait(COUNTDOWN_INTERVAL)
 		end
 	end)
@@ -199,8 +221,10 @@ function WoodMultiplierController:init()
 		self._valueLabel = valueLabel
 		self._countDownLabel = countDownLabel
 		self._handle = handle
+		self._weatherLabel = resolveWeatherLabel(gui)
 
 		self:readWorkspaceAttributes()
+		self:refreshWeatherLabel()
 		self:startCountdownLoop()
 
 		Workspace:GetAttributeChangedSignal(WoodMultiplierConfig.ATTR_MULTIPLIER):Connect(function()
@@ -208,6 +232,12 @@ function WoodMultiplierController:init()
 		end)
 		Workspace:GetAttributeChangedSignal(WoodMultiplierConfig.ATTR_NEXT_REFRESH_AT):Connect(function()
 			self:readWorkspaceAttributes()
+		end)
+		ReplicatedStorage:GetAttributeChangedSignal(AttributeEnum.WeatherDuration):Connect(function()
+			self:refreshWeatherLabel()
+		end)
+		ReplicatedStorage:GetAttributeChangedSignal(AttributeEnum.CurrentWeather):Connect(function()
+			self:refreshWeatherLabel()
 		end)
 	end)
 

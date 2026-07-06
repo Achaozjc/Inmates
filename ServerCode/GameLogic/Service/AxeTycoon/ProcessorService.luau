@@ -41,6 +41,7 @@ local CollectMoneyService = require(ServerCode.GameLogic.Service.AxeTycoon.Colle
 local DebouncedPlayerSave = require(ServerCode.GameLogic.Modules.AxeTycoon.DebouncedPlayerSave)
 local ProcessorBaseAttributes = require(ServerCode.GameLogic.Modules.AxeTycoon.ProcessorBaseAttributes)
 local WoodMultiplierService = require(ServerCode.GameLogic.Service.AxeTycoon.WoodMultiplierService)
+local EnvironmentBuffHelper = require(ReplicatedCode.GameLogic.Shared.Weather.EnvironmentBuffHelper)
 
 local STORAGE_BUTTON_NAME = "Storage"
 local PROCESS_INTERVAL = 1
@@ -153,8 +154,8 @@ local function processPlayer(player: Player)
 	end
 
 	local upgradeCount = tonumber(axeData.processorUpgradeCount) or 0
-	local rate = ProcessorUpgradeConfig.getRate(upgradeCount)
-	local processed = math.min(rate, stock)
+	local rate = ProcessorUpgradeConfig.getRate(upgradeCount) * EnvironmentBuffHelper.getProcessorSpeedMultiplier()
+	local processed = math.min(math.floor(rate), stock)
 	if processed <= 0 then
 		return
 	end

@@ -29,6 +29,8 @@ local RemoteEventKey = require(ReplicatedCode.GameLogic.SharedConstants.Keys.Rem
 local BaseAssignmentService = require(ServerCode.GameLogic.Service.AxeTycoon.BaseAssignmentService)
 local TycoonState = require(ServerCode.GameLogic.Modules.AxeTycoon.TycoonState)
 local ChestProductionService = require(ServerCode.GameLogic.Service.AxeTycoon.ChestProductionService)
+local EnvironmentBuffHelper = require(ReplicatedCode.GameLogic.Shared.Weather.EnvironmentBuffHelper)
+local AttributeEnum = require(ReplicatedCode.GameLogic.Shared.Enums.AttributeEnum)
 
 local RECONCILE_INTERVAL = 1 -- 每秒同步斧子集合
 -- 砍木动画比实际产木提前的秒数（客户端 produceAnim / produce 分两阶段）
@@ -52,6 +54,10 @@ local WoodProductionService = {}
 local producers: { [Model]: Producer } = {}
 local started = false
 
+local function getEffectiveCd(baseCd: number): number
+	return baseCd * EnvironmentBuffHelper.getWoodProductionCdMultiplier()
+end
+
 local function cancelProduceAnim(producer: Producer)
 	if producer.animThread then
 		pcall(task.cancel, producer.animThread)
@@ -68,7 +74,7 @@ local function scheduleProduceAnim(producer: Producer, model: Model)
 		return
 	end
 
-	local delay = math.max(0, info.cd - PRODUCE_ANIM_LEAD)
+	local delay = math.max(0, getEffectiveCd(info.cd) - PRODUCE_ANIM_LEAD)
 	producer.animThread = task.delay(delay, function()
 		producer.animThread = nil
 		if producers[model] ~= producer or not model.Parent then
@@ -142,7 +148,7 @@ local function addProducer(userId: number, slotKey: string, model: Model, catego
 		return
 	end
 
-	local timer = TimerSystem.new(info.cd, true)
+	local timer = TimerSystem.new(getEffectiveCd(info.cd), true)
 	local producer: Producer = {
 		timer = timer,
 		userId = userId,
@@ -183,6 +189,28 @@ local function reconcile()
 	end
 end
 
+local function refreshProducerDurations()
+	for model, producer in producers do
+		local info = AxeConfig.Axes[producer.axeCategory]
+		if not info then
+			continue
+		end
+
+		local oldDuration = TimerSystem.getDuration(producer.timer) or info.cd
+		local newDuration = getEffectiveCd(info.cd)
+		if oldDuration <= 0 then
+			TimerSystem.setDuration(producer.timer, newDuration)
+		else
+			local remaining = TimerSystem.getSecondsRemaining(producer.timer) or newDuration
+			local ratio = math.clamp(remaining / oldDuration, 0, 1)
+			TimerSystem.setDuration(producer.timer, newDuration)
+			TimerSystem.setSecondsRemaining(producer.timer, newDuration * ratio)
+		end
+
+		scheduleProduceAnim(producer, model)
+	end
+end
+
 -- 玩家离开：清理其所有生产者与堆叠区数据
 local function onPlayerRemoving(player: Player)
 	for model, producer in producers do
@@ -206,6 +234,7 @@ function WoodProductionService.start()
 
 	setInterval(reconcile, RECONCILE_INTERVAL)
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
+	ReplicatedStorage:GetAttributeChangedSignal(AttributeEnum.CurrentWeather):Connect(refreshProducerDurations)
 end
 
 return WoodProductionService

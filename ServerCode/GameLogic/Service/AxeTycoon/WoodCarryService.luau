@@ -26,6 +26,7 @@ local PlayerDataServer = require(ServerCode.Framework.DataStore.PlayerData.Playe
 local BaseAssignmentService = require(ServerCode.GameLogic.Service.AxeTycoon.BaseAssignmentService)
 local DebouncedPlayerSave = require(ServerCode.GameLogic.Modules.AxeTycoon.DebouncedPlayerSave)
 local TycoonState = require(ServerCode.GameLogic.Modules.AxeTycoon.TycoonState)
+local EnvironmentBuffHelper = require(ReplicatedCode.GameLogic.Shared.Weather.EnvironmentBuffHelper)
 
 -- 客户端请求去抖间隔（秒），与客户端检测周期一致
 local CHECK_INTERVAL = 0.25
@@ -34,6 +35,14 @@ local WoodCarryService = {}
 
 local started = false
 local lastPickupAt: { [Player]: number } = {}
+
+local function applyCollectBonus(taken: { [string]: number }): { [string]: number }
+	local boosted: { [string]: number } = {}
+	for category, count in taken do
+		boosted[category] = EnvironmentBuffHelper.applyWoodCollectBonus(count)
+	end
+	return boosted
+end
 
 local function mergeCarrying(target: { [string]: number }, taken: { [string]: number })
 	for category, count in taken do
@@ -122,6 +131,8 @@ function WoodCarryService.pickupByCategory(player: Player, silent: boolean?, byC
 		return
 	end
 
+	taken = applyCollectBonus(taken)
+
 	PlayerDataServer.updateValue(player, PlayerDataKey.AxeTycoon, function(data)
 		data = if type(data) == "table" then data else {}
 		local nextCarrying = if type(data.carrying) == "table" then data.carrying else {}
@@ -156,6 +167,8 @@ function WoodCarryService.pickup(player: Player, silent: boolean?, count: number
 	if next(taken) == nil then
 		return
 	end
+
+	taken = applyCollectBonus(taken)
 
 	PlayerDataServer.updateValue(player, PlayerDataKey.AxeTycoon, function(data)
 		data = if type(data) == "table" then data else {}
